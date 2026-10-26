@@ -1,130 +1,189 @@
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import React from 'react';
+import { AppShell } from '@/components/layout/AppShell';
+import { StatCard } from '@/components/ui/StatCard';
+import { AlertBanner } from '@/components/ui/AlertBanner';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { CaseStatusBadge, Badge } from '@/components/ui/Badge';
 import { getDataRepository } from '@/lib/data';
 import { formatDate, formatEGP } from '@/lib/utils';
 import Link from 'next/link';
+import {
+  FolderOpen,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  Filter,
+  Eye,
+  Handshake,
+  History,
+  Lock,
+  ShieldAlert,
+} from 'lucide-react';
 
 export default async function AdminCasesPage() {
   const repo = getDataRepository();
-  // Using demo seller ID to get sample cases
-  const cases = await repo.getCasesBySeller('11111111-1111-4111-8111-111111111111');
+  const cases = await repo.getAllCases();
 
-  const statusBadges: Record<string, string> = {
-    draft: 'bg-surface-100 text-surface-700',
-    submitted: 'bg-blue-100 text-blue-800',
-    screening: 'bg-indigo-100 text-indigo-800',
-    documents_pending: 'bg-amber-100 text-amber-800',
-    in_review: 'bg-purple-100 text-purple-800',
-    ready_for_approval: 'bg-cyan-100 text-cyan-800',
-    approved: 'bg-emerald-100 text-emerald-800',
-    published: 'bg-emerald-600 text-white',
-    paused: 'bg-amber-600 text-white',
-    closed: 'bg-surface-800 text-white',
-    rejected: 'bg-red-100 text-red-800',
-  };
+  // Metrics
+  const totalCount = cases.length;
+  const pendingScreeningCount = cases.filter((c) => ['submitted', 'screening'].includes(c.status)).length;
+  const inReviewCount = cases.filter((c) => ['documents_pending', 'in_review', 'ready_for_approval'].includes(c.status)).length;
+  const publishedCount = cases.filter((c) => c.status === 'published').length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface-50/50">
-      <Navbar />
+    <AppShell
+      activeRole="admin"
+      pageTitle="إدارة ومراجعة الحالات"
+      pageSubtitle="فرز طلبات التنازل، فحص المستندات، والتحقق من بوابات النشر الـ 9"
+    >
+      <div className="space-y-8">
+        {/* KPI Stat Cards (Matching Image 2) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <StatCard
+            title="إجمالي الحالات"
+            value={totalCount}
+            subtitle="مسجلة بالنظام"
+            icon={<FolderOpen className="w-5 h-5" />}
+            highlightColor="brand"
+          />
+          <StatCard
+            title="فرز أولي جديد"
+            value={pendingScreeningCount}
+            subtitle="تتطلب فحص البيانات"
+            icon={<AlertCircle className="w-5 h-5" />}
+            highlightColor="amber"
+          />
+          <StatCard
+            title="قيد المراجعة المالية/القانونية"
+            value={inReviewCount}
+            subtitle="مراجعة كشوف الحساب"
+            icon={<Clock className="w-5 h-5" />}
+            highlightColor="blue"
+          />
+          <StatCard
+            title="معتمدة ومنشورة"
+            value={publishedCount}
+            subtitle="مستوفية للبوابات الـ 9"
+            icon={<CheckCircle2 className="w-5 h-5" />}
+            highlightColor="brand"
+          />
+        </div>
 
-      <main className="flex-1 py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Admin Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-8 border-b border-surface-200 gap-4">
+        {/* Urgent Triage Notice */}
+        {pendingScreeningCount > 0 && (
+          <AlertBanner
+            variant="blue"
+            title={`توجد ${pendingScreeningCount} حالات جديدة بحاجة إلى فرز أولي وفحص المستندات`}
+            description="يرجى مطابقة صور العقود وبطاقات الرقم القومي قبل إحالة الحالات إلى المراجعة المالية والمراجعة القانونية."
+            badgeText="تنبيه عمليات"
+            icon={<ShieldAlert className="w-5 h-5 text-blue-300" />}
+          />
+        )}
+
+        {/* Cases Data Table Card */}
+        <Card>
+          <CardHeader className="bg-surface-50/60 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-brand-900 bg-brand-100 px-3 py-0.5 rounded-full">
-                  إدارة العمليات والتدقيق (Backoffice)
-                </span>
-                <span className="text-xs text-surface-400">صلاحيات: العمليات، التدقيق المالي، الفحص القانوني، النشر</span>
-              </div>
-              <h1 className="text-3xl font-black text-surface-900">
-                لوحة فرز ومتابعة الحالات
-              </h1>
+              <CardTitle>جدول فرز الحالات ({cases.length})</CardTitle>
+              <p className="text-xs text-surface-400 mt-1">
+                انقر على &ldquo;فحص واعتماد&rdquo; للتحقق من بوابات النشر الـ 9 وتوقيع مسؤول النشر.
+              </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Quick Links */}
+            <div className="flex items-center gap-2">
               <Link
                 href="/admin/deals"
-                className="text-xs font-bold text-surface-700 bg-white border border-surface-300 px-4 py-2.5 rounded-xl hover:bg-surface-50"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-surface-700 bg-white border border-surface-300 px-3 py-1.5 rounded-xl hover:bg-surface-50 transition-colors"
               >
-                متابعة الصفقات (Deals)
+                <Handshake className="w-3.5 h-3.5 text-brand-700" />
+                <span>الصفقات</span>
               </Link>
               <Link
                 href="/admin/audit-logs"
-                className="text-xs font-bold text-surface-700 bg-white border border-surface-300 px-4 py-2.5 rounded-xl hover:bg-surface-50"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-surface-700 bg-white border border-surface-300 px-3 py-1.5 rounded-xl hover:bg-surface-50 transition-colors"
               >
-                سجل التدقيق (Audit Logs)
+                <History className="w-3.5 h-3.5 text-surface-600" />
+                <span>سجل التدقيق</span>
               </Link>
             </div>
-          </div>
+          </CardHeader>
 
-          {/* Cases Master Table */}
-          <div className="bg-white rounded-3xl border border-surface-200 overflow-hidden shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-xs">
-                <thead>
-                  <tr className="bg-surface-100 border-b border-surface-200 font-bold text-surface-700">
-                    <th className="p-4">رقم القيد</th>
-                    <th className="p-4">المشروع والمطور</th>
-                    <th className="p-4">الموقع</th>
-                    <th className="p-4">نوع الحالة</th>
-                    <th className="p-4">حالة الطلب</th>
-                    <th className="p-4">المبلغ المطلوب</th>
-                    <th className="p-4">تاريخ الإرسال</th>
-                    <th className="p-4 text-center">الإجراء</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-200">
-                  {cases.map(async (c) => {
-                    const property = await repo.getPropertyById(c.property_id);
-                    const contract = property ? await repo.getContractByPropertyId(property.id) : null;
-                    const badgeClass = statusBadges[c.status] || 'bg-surface-100 text-surface-700';
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-xs">
+              <thead>
+                <tr className="bg-surface-100/70 border-b border-surface-200 font-bold text-surface-700">
+                  <th className="p-4">رقم القيد</th>
+                  <th className="p-4">المشروع والمطور</th>
+                  <th className="p-4">الموقع</th>
+                  <th className="p-4">طبيعة الحالة</th>
+                  <th className="p-4">حالة الطلب</th>
+                  <th className="p-4">المبلغ المطلوب</th>
+                  <th className="p-4">تاريخ التسجيل</th>
+                  <th className="p-4 text-center">الإجراء</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-200">
+                {cases.map(async (c) => {
+                  const property = await repo.getPropertyById(c.property_id);
+                  const contract = property ? await repo.getContractByPropertyId(property.id) : null;
 
-                    return (
-                      <tr key={c.id} className="hover:bg-surface-50/70 transition-colors">
-                        <td className="p-4 font-mono font-bold text-brand-900">{c.case_number}</td>
-                        <td className="p-4 font-bold text-surface-800">
-                          {property ? `${property.developer_name} - ${property.project_name}` : '—'}
-                        </td>
-                        <td className="p-4 text-surface-600">
-                          {property ? `${property.governorate} • ${property.city_district}` : '—'}
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                            c.case_nature === 'distress_exit' ? 'bg-amber-100 text-amber-800' : 'bg-surface-100 text-surface-700'
-                          }`}>
-                            {c.case_nature === 'distress_exit' ? 'تخارج وتعثر' : 'عادي'}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${badgeClass}`}>
-                            {c.status}
-                          </span>
-                        </td>
-                        <td className="p-4 font-bold text-surface-900">
-                          {contract ? formatEGP(contract.deposit_paid + contract.installments_paid) : '—'}
-                        </td>
-                        <td className="p-4 text-surface-500">{formatDate(c.created_at)}</td>
-                        <td className="p-4 text-center">
-                          <Link
-                            href={`/admin/cases/${c.id}`}
-                            className="inline-block bg-brand-700 hover:bg-brand-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors"
+                  return (
+                    <tr key={c.id} className="hover:bg-surface-50/70 transition-colors">
+                      <td className="p-4 font-mono font-bold text-brand-900">
+                        {c.case_number}
+                      </td>
+                      <td className="p-4 font-bold text-surface-800">
+                        {property ? `${property.developer_name} - ${property.project_name}` : '—'}
+                      </td>
+                      <td className="p-4 text-surface-600">
+                        {property ? `${property.governorate} • ${property.city_district}` : '—'}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1">
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                              c.case_nature === 'distress_exit'
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-surface-100 text-surface-700'
+                            }`}
                           >
-                            فحص واعتماد
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            {c.case_nature === 'distress_exit' ? 'تعثر وتخارج' : 'عادي'}
+                          </span>
+                          {c.is_private_listing && (
+                            <span className="p-1 rounded bg-purple-50 text-purple-700" title="عرض خاص سري">
+                              <Lock className="w-3 h-3" />
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <CaseStatusBadge status={c.status} />
+                      </td>
+                      <td className="p-4 font-bold text-surface-900">
+                        {contract ? formatEGP(contract.deposit_paid + contract.installments_paid) : '—'}
+                      </td>
+                      <td className="p-4 text-surface-500 font-mono">
+                        {formatDate(c.created_at)}
+                      </td>
+                      <td className="p-4 text-center">
+                        <Link
+                          href={`/admin/cases/${c.id}`}
+                          className="inline-flex items-center gap-1 bg-brand-700 hover:bg-brand-800 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition-colors shadow-2xs"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>فحص واعتماد</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </main>
-
-      <Footer />
-    </div>
+        </Card>
+      </div>
+    </AppShell>
   );
 }

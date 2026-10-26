@@ -59,27 +59,29 @@ export default async function HomePage() {
         <HowItWorksTimeline />
 
         {/* Quick CTA Banner */}
-        <section className="py-16 bg-gradient-to-br from-brand-900 via-brand-800 to-surface-900 text-white text-center">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl sm:text-4xl font-black mb-4">
-              هل تواجه صعوبة في استكمال أقساط وحدتك؟
-            </h2>
-            <p className="text-brand-100 text-base sm:text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
-              لا تلجأ لفسخ العقد وتتحمل غرامات 15% وتنتظر سنوات. استرد مدفوعاتك كاش فوراً عبر التنازل المنظم لمشترٍ جاد بدون أي عمولات في فترة الإطلاق.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                href="/seller/new-case"
-                className="w-full sm:w-auto bg-white hover:bg-brand-50 text-brand-900 font-bold px-8 py-3.5 rounded-xl shadow-md transition-all"
-              >
-                ابدأ مسودة طلب التخارج مجاناً
-              </Link>
-              <Link
-                href="/calculator"
-                className="w-full sm:w-auto bg-brand-800/80 hover:bg-brand-700 text-white border border-brand-500 font-bold px-8 py-3.5 rounded-xl transition-all"
-              >
-                احسب خسائر الإلغاء مقابل التنازل
-              </Link>
+        <section className="py-16 bg-surface-50">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-brand-900 rounded-3xl p-8 sm:p-12 text-white text-center border border-brand-800 shadow-sm relative overflow-hidden">
+              <h2 className="text-2xl sm:text-3xl font-black mb-3">
+                هل تواجه صعوبة في استكمال أقساط وحدتك العقارية؟
+              </h2>
+              <p className="text-brand-100 text-xs sm:text-sm mb-8 max-w-xl mx-auto leading-relaxed">
+                لا تلجأ لفسخ العقد وخسارة 15% من ثمن الوحدة وانتظار سنوات. استرد مدفوعاتك كاش فوراً عبر التنازل المنظم لمشترٍ جاد بدون أي عمولات.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/seller/new-case"
+                  className="w-full sm:w-auto bg-white hover:bg-surface-100 text-surface-900 font-bold px-7 py-3 rounded-xl shadow-xs transition-colors text-xs sm:text-sm"
+                >
+                  ابدأ مسودة طلب التخارج مجاناً
+                </Link>
+                <Link
+                  href="/calculator"
+                  className="w-full sm:w-auto bg-brand-800 hover:bg-brand-700 text-white border border-brand-700 font-bold px-7 py-3 rounded-xl transition-colors text-xs sm:text-sm"
+                >
+                  احسب خسائر الإلغاء مقابل التنازل
+                </Link>
+              </div>
             </div>
           </div>
         </section>

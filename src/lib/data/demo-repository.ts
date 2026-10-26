@@ -8,6 +8,9 @@ import type {
   FinancialReview,
   LegalReview,
   Lead,
+  Deal,
+  BuyerPreferences,
+  SavedListing,
   Profile,
   UserRoleAssignment,
 } from '../types';
@@ -22,6 +25,9 @@ import {
   DEMO_FINANCIAL_REVIEWS,
   DEMO_LEGAL_REVIEWS,
   DEMO_LEADS,
+  DEMO_DEALS,
+  DEMO_BUYER_PREFERENCES,
+  DEMO_SAVED_LISTINGS,
   DEMO_GOVERNORATES,
   DEMO_DEVELOPERS,
 } from './demo-data';
@@ -37,6 +43,9 @@ export class DemoRepository implements DataRepository {
   private financialReviews: FinancialReview[];
   private legalReviews: LegalReview[];
   private leads: Lead[];
+  private deals: Deal[];
+  private buyerPreferences: BuyerPreferences[];
+  private savedListings: SavedListing[];
   private governorates: string[];
   private developers: string[];
 
@@ -51,6 +60,9 @@ export class DemoRepository implements DataRepository {
     this.financialReviews = [...DEMO_FINANCIAL_REVIEWS];
     this.legalReviews = [...DEMO_LEGAL_REVIEWS];
     this.leads = [...DEMO_LEADS];
+    this.deals = [...DEMO_DEALS];
+    this.buyerPreferences = [...DEMO_BUYER_PREFERENCES];
+    this.savedListings = [...DEMO_SAVED_LISTINGS];
     this.governorates = [...DEMO_GOVERNORATES];
     this.developers = [...DEMO_DEVELOPERS];
   }
@@ -126,6 +138,10 @@ export class DemoRepository implements DataRepository {
       (item) => item.id === id || item.case_number === id
     );
     return listing || null;
+  }
+
+  async getAllCases(): Promise<AssignmentCase[]> {
+    return [...this.cases];
   }
 
   async getCasesBySeller(sellerId: string): Promise<AssignmentCase[]> {
@@ -224,6 +240,30 @@ export class DemoRepository implements DataRepository {
 
   async getLeadsByCaseId(caseId: string): Promise<Lead[]> {
     return this.leads.filter((lead) => lead.case_id === caseId);
+  }
+
+  async getBuyerLeads(buyerId: string): Promise<Lead[]> {
+    return this.leads.filter((lead) => lead.buyer_id === buyerId);
+  }
+
+  async getAllDeals(): Promise<Deal[]> {
+    return [...this.deals];
+  }
+
+  async getBuyerDeals(buyerId: string): Promise<Deal[]> {
+    return this.deals.filter((d) => d.buyer_id === buyerId);
+  }
+
+  async getBuyerSavedListings(buyerId: string): Promise<PublicListing[]> {
+    const savedIds = this.savedListings
+      .filter((s) => s.buyer_id === buyerId)
+      .map((s) => s.listing_id);
+    return this.listings.filter((l) => savedIds.includes(l.id));
+  }
+
+  async getBuyerPreferences(buyerId: string): Promise<BuyerPreferences | null> {
+    const pref = this.buyerPreferences.find((p) => p.buyer_id === buyerId);
+    return pref || null;
   }
 
   async getProfile(userId: string): Promise<Profile | null> {

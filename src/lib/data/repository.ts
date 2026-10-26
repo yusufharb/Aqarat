@@ -7,6 +7,8 @@ import type {
   FinancialReview,
   LegalReview,
   Lead,
+  Deal,
+  BuyerPreferences,
   Profile,
   UserRoleAssignment,
 } from '../types';
@@ -28,6 +30,7 @@ export interface DataRepository {
   getPublicListingById(id: string): Promise<PublicListing | null>;
 
   // Cases (authenticated, role-checked)
+  getAllCases(): Promise<AssignmentCase[]>;
   getCasesBySeller(sellerId: string): Promise<AssignmentCase[]>;
   getCaseById(caseId: string): Promise<AssignmentCase | null>;
   createCase(sellerId: string, data: Partial<AssignmentCase>): Promise<AssignmentCase>;
@@ -46,9 +49,18 @@ export interface DataRepository {
   getFinancialReview(caseId: string): Promise<FinancialReview | null>;
   getLegalReview(caseId: string): Promise<LegalReview | null>;
 
-  // Leads
+  // Leads & Inquiries
   createLead(data: Omit<Lead, 'id' | 'created_at'>): Promise<Lead>;
   getLeadsByCaseId(caseId: string): Promise<Lead[]>;
+  getBuyerLeads(buyerId: string): Promise<Lead[]>;
+
+  // Deals
+  getAllDeals(): Promise<Deal[]>;
+  getBuyerDeals(buyerId: string): Promise<Deal[]>;
+
+  // Buyer Specific
+  getBuyerSavedListings(buyerId: string): Promise<PublicListing[]>;
+  getBuyerPreferences(buyerId: string): Promise<BuyerPreferences | null>;
 
   // Profiles
   getProfile(userId: string): Promise<Profile | null>;

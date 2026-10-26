@@ -10,6 +10,9 @@ import type {
   LegalReview,
   PublicationGates,
   Lead,
+  Deal,
+  BuyerPreferences,
+  SavedListing,
 } from '../types';
 
 // ============================================================================
@@ -847,5 +850,79 @@ export const DEMO_LEADS: Lead[] = [
     budget_cash: 4500000,
     comfortable_installment: 300000,
     created_at: '2026-02-14T11:20:00Z',
+  },
+];
+
+// ============================================================================
+// Fictional Active Deals
+// ============================================================================
+export const DEMO_DEALS: Deal[] = [
+  {
+    id: 'deal-001',
+    case_id: 'cccccccc-1111-4ccc-8ccc-cccccccccccc',
+    lead_id: 'lead-001',
+    seller_id: '11111111-1111-4111-8111-111111111111',
+    buyer_id: '22222222-2222-4222-8222-222222222221',
+    status: 'developer_approval_pending',
+    agreed_cash_amount: 7200000,
+    notes: 'تمت المعاينة والاتفاق المبدئي، بانتظار إفادة خدمة عملاء إعمار بموعد التنازل الرسمي.',
+    created_at: '2026-02-10T12:00:00Z',
+    updated_at: '2026-02-18T14:30:00Z',
+  },
+  {
+    id: 'deal-002',
+    case_id: 'cccccccc-5555-4ccc-8ccc-cccccccccccc',
+    lead_id: 'lead-003',
+    seller_id: '11111111-1111-4111-8111-111111111112',
+    buyer_id: '22222222-2222-4222-8222-222222222221',
+    status: 'viewing_or_discussion',
+    agreed_cash_amount: null,
+    notes: 'تواصل أولي للاستفسار عن موعد المعاينة الميدانية.',
+    created_at: '2026-02-15T09:00:00Z',
+    updated_at: '2026-02-15T09:00:00Z',
+  },
+];
+
+// ============================================================================
+// Fictional Buyer Preferences
+// ============================================================================
+export const DEMO_BUYER_PREFERENCES: BuyerPreferences[] = [
+  {
+    id: 'pref-001',
+    buyer_id: '22222222-2222-4222-8222-222222222221',
+    budget_cash: 8000000,
+    max_installment_value: 350000,
+    preferred_governorates: ['القاهرة', 'الجيزة'],
+    preferred_districts: ['القاهرة الجديدة (التجمع الخامس)', 'الشيخ زايد'],
+    preferred_unit_types: ['apartment', 'duplex'],
+    updated_at: '2026-02-15T10:00:00Z',
+  },
+  {
+    id: 'pref-002',
+    buyer_id: '22222222-2222-4222-8222-222222222222',
+    budget_cash: 6000000,
+    max_installment_value: 250000,
+    preferred_governorates: ['القاهرة'],
+    preferred_districts: ['العاصمة الإدارية الجديدة', 'المستقبل سيتي'],
+    preferred_unit_types: ['apartment'],
+    updated_at: '2026-02-10T11:00:00Z',
+  },
+];
+
+// ============================================================================
+// Fictional Saved Listings (Favorites)
+// ============================================================================
+export const DEMO_SAVED_LISTINGS: SavedListing[] = [
+  {
+    id: 'saved-001',
+    buyer_id: '22222222-2222-4222-8222-222222222221',
+    listing_id: 'list-001',
+    saved_at: '2026-02-06T11:00:00Z',
+  },
+  {
+    id: 'saved-002',
+    buyer_id: '22222222-2222-4222-8222-222222222221',
+    listing_id: 'list-005',
+    saved_at: '2026-02-14T09:30:00Z',
   },
 ];

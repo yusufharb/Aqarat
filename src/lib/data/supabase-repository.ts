@@ -8,6 +8,8 @@ import {
   FinancialReview,
   LegalReview,
   Lead,
+  Deal,
+  BuyerPreferences,
   Profile,
   UserRoleAssignment,
 } from '../types';
@@ -101,6 +103,19 @@ export class SupabaseRepository implements DataRepository {
   async getPublicListingById(id: string): Promise<PublicListing | null> {
     const listings = await this.getPublicListings();
     return listings.find((l) => l.id === id) || null;
+  }
+
+  async getAllCases(): Promise<AssignmentCase[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('assignment_cases')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch all cases: ${error.message}`);
+    }
+    return (data || []) as AssignmentCase[];
   }
 
   async getCasesBySeller(sellerId: string): Promise<AssignmentCase[]> {
@@ -240,6 +255,66 @@ export class SupabaseRepository implements DataRepository {
 
     if (error) return [];
     return (data || []) as Lead[];
+  }
+
+  async getBuyerLeads(buyerId: string): Promise<Lead[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('buyer_id', buyerId)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return (data || []) as Lead[];
+  }
+
+  async getAllDeals(): Promise<Deal[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('deals')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return (data || []) as Deal[];
+  }
+
+  async getBuyerDeals(buyerId: string): Promise<Deal[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('deals')
+      .select('*')
+      .eq('buyer_id', buyerId)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return (data || []) as Deal[];
+  }
+
+  async getBuyerSavedListings(buyerId: string): Promise<PublicListing[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data: savedData, error } = await supabase
+      .from('saved_listings')
+      .select('listing_id')
+      .eq('buyer_id', buyerId);
+
+    if (error || !savedData || savedData.length === 0) return [];
+    const listingIds = savedData.map((s: { listing_id: string }) => s.listing_id);
+    const allListings = await this.getPublicListings();
+    return allListings.filter((l) => listingIds.includes(l.id));
+  }
+
+  async getBuyerPreferences(buyerId: string): Promise<BuyerPreferences | null> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('buyer_preferences')
+      .select('*')
+      .eq('buyer_id', buyerId)
+      .single();
+
+    if (error) return null;
+    return data as BuyerPreferences;
   }
 
   async getProfile(userId: string): Promise<Profile | null> {

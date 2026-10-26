@@ -1,148 +1,271 @@
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import React from 'react';
+import { AppShell } from '@/components/layout/AppShell';
+import { StatCard } from '@/components/ui/StatCard';
+import { AlertBanner } from '@/components/ui/AlertBanner';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { CaseStatusBadge, Badge } from '@/components/ui/Badge';
+import { WorkflowStepper } from '@/components/ui/WorkflowStepper';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { getDataRepository } from '@/lib/data';
 import { formatEGP, formatDate } from '@/lib/utils';
 import Link from 'next/link';
+import {
+  Building,
+  FileCheck,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Eye,
+  PlusCircle,
+  ArrowLeft,
+  Lock,
+  ShieldCheck,
+} from 'lucide-react';
 
 export default async function SellerDashboardPage() {
   const repo = getDataRepository();
-  // Using demo seller ID for preview
+  // Seller ID (Ahmed Mohamed)
   const sellerId = '11111111-1111-4111-8111-111111111111';
   const cases = await repo.getCasesBySeller(sellerId);
 
-  const statusLabels: Record<string, { label: string; color: string }> = {
-    draft: { label: 'مسودة قيد الإكمال', color: 'bg-surface-100 text-surface-700' },
-    submitted: { label: 'تم الإرسال للمراجعة', color: 'bg-blue-100 text-blue-800' },
-    screening: { label: 'قيد الفرز الأولي', color: 'bg-indigo-100 text-indigo-800' },
-    documents_pending: { label: 'بانتظار استكمال مستندات', color: 'bg-amber-100 text-amber-800' },
-    in_review: { label: 'قيد المراجعة المالية والقانونية', color: 'bg-purple-100 text-purple-800' },
-    ready_for_approval: { label: 'مكتملة ومستعدة للاعتماد', color: 'bg-cyan-100 text-cyan-800' },
-    approved: { label: 'معتمدة للنشر', color: 'bg-emerald-100 text-emerald-800' },
-    published: { label: 'منشورة بالكتالوج العام', color: 'bg-emerald-600 text-white' },
-    paused: { label: 'متوقفة مؤقتاً', color: 'bg-amber-600 text-white' },
-    closed: { label: 'مغلقة / تمت الصفقة', color: 'bg-surface-700 text-white' },
-    rejected: { label: 'مرفوضة لعدم الأهلية', color: 'bg-red-100 text-red-800' },
-  };
+  // Compute status counts
+  const totalCount = cases.length;
+  const inReviewCount = cases.filter((c) =>
+    ['submitted', 'screening', 'in_review', 'ready_for_approval'].includes(c.status)
+  ).length;
+  const publishedCount = cases.filter((c) => c.status === 'published').length;
+  const actionRequiredCount = cases.filter((c) =>
+    ['draft', 'documents_pending'].includes(c.status)
+  ).length;
+
+  // Check if any case needs urgent documents
+  const pendingDocsCase = cases.find((c) => c.status === 'documents_pending');
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface-50/50">
-      <Navbar />
+    <AppShell
+      activeRole="seller"
+      pageTitle="لوحة تحكم البائع"
+      pageSubtitle="متابعة طلبات التنازل، حالة المراجعة القانونية، وملاحظات فريق التشغيل"
+      primaryAction={{
+        label: 'أضف وحدة للتنازل',
+        href: '/seller/new-case',
+        icon: <PlusCircle className="w-4 h-4" />,
+      }}
+    >
+      <div className="space-y-8">
+        {/* KPI Stat Cards (Matching Image 2) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <StatCard
+            title="إجمالي طلباتي"
+            value={totalCount}
+            subtitle="وحدات مسجلة بالمنصة"
+            icon={<Building className="w-5 h-5" />}
+            highlightColor="brand"
+          />
+          <StatCard
+            title="قيد المراجعة والتدقيق"
+            value={inReviewCount}
+            subtitle="مراجعة مالية وقانونية"
+            icon={<Clock className="w-5 h-5" />}
+            highlightColor="amber"
+          />
+          <StatCard
+            title="معتمدة ومنشورة"
+            value={publishedCount}
+            subtitle="متاحة للمشترين المؤهلين"
+            icon={<CheckCircle2 className="w-5 h-5" />}
+            highlightColor="brand"
+          />
+          <StatCard
+            title="إجراءات مطلوبة"
+            value={actionRequiredCount}
+            subtitle={actionRequiredCount > 0 ? 'يرجى استكمال المستندات' : 'كل الطلبات مكتملة'}
+            icon={<AlertCircle className="w-5 h-5" />}
+            highlightColor={actionRequiredCount > 0 ? 'amber' : 'brand'}
+          />
+        </div>
 
-      <main className="flex-1 py-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-8 border-b border-surface-200 gap-4">
-            <div>
-              <span className="text-xs font-bold text-brand-800 bg-brand-100 px-3 py-1 rounded-full inline-block mb-2">
-                لوحة تحكم البائع
-              </span>
-              <h1 className="text-3xl font-black text-surface-900">
-                طلبات التنازل الخاصة بك
-              </h1>
-              <p className="text-xs sm:text-sm text-surface-500 mt-1">
-                تابع حالة طلباتك، وملاحظات فريق المراجعة القانونية والمالية خطوة بخطوة.
-              </p>
-            </div>
+        {/* Action Required Banner (Inspired by Image 2 Action Notice) */}
+        {pendingDocsCase ? (
+          <AlertBanner
+            variant="amber"
+            title="مطلوب استكمال مستندات رسمية لوحدتك"
+            description={`طلب القيد ${pendingDocsCase.case_number} بانتظار رفع كشف حساب المطور المحدث أو إيصال السداد الأخير لاستكمال بوابات النشر.`}
+            actionText="استكمال رفع المستندات الآن"
+            actionHref="/seller/new-case"
+            badgeText="تنبيه هام"
+            icon={<FileText className="w-5 h-5 text-amber-900" />}
+          />
+        ) : (
+          <AlertBanner
+            variant="brand"
+            title="إطلاق مجاني بالكامل — عمولة 0% على البائع والمشتري"
+            description="جميع خدمات المراجعة والتدقيق والربط بالمشتري معفاة تماماً من أي رسوم أو عمولات خلال مرحلة الإطلاق الأولي."
+            actionText="عرض الشروط وكيفية العمل"
+            actionHref="/how-it-works"
+            badgeText="مجاناً"
+            icon={<ShieldCheck className="w-5 h-5 text-emerald-200" />}
+          />
+        )}
 
-            <Link
-              href="/seller/new-case"
-              className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white text-xs sm:text-sm font-bold px-6 py-3.5 rounded-xl shadow-sm transition-colors"
-            >
-              <span>+ إضافة طلب تنازل جديد</span>
-            </Link>
+        {/* Cases Section */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base sm:text-lg font-black text-surface-900">
+              قائمة طلبات التنازل ({cases.length})
+            </h2>
+            <span className="text-xs text-surface-400">
+              يتم تحديث حالات الطلبات دورياً مع تقدم فريق الفحص والتدقيق
+            </span>
           </div>
 
-          {/* Cases List */}
           {cases.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-surface-200">
-              <div className="text-4xl mb-3">📄</div>
-              <h3 className="text-base font-bold text-surface-800 mb-1">
-                لا توجد لديك أي طلبات تنازل حالياً
-              </h3>
-              <p className="text-xs text-surface-500 mb-6">
-                ابدأ بإنشاء مسودة طلب تنازل لرفع بيانات وحدتك واسترداد أموالك كاش.
-              </p>
-              <Link
-                href="/seller/new-case"
-                className="inline-block bg-brand-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl"
-              >
-                إنشاء أول طلب تنازل
-              </Link>
-            </div>
+            <EmptyState
+              icon={<Building className="w-8 h-8 text-surface-400" />}
+              title="لم تقم بإضافة أي وحدات للتنازل حتى الآن"
+              description="ابدأ بإدخال بيانات وحدتك وعقدك مع المطور العقاري لاسترداد مدفوعاتك كاش بدون غرامات فسخ."
+              actionText="أضف أول وحدة للتنازل"
+              actionHref="/seller/new-case"
+            />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {cases.map(async (c) => {
                 const property = await repo.getPropertyById(c.property_id);
                 const contract = property ? await repo.getContractByPropertyId(property.id) : null;
-                const statusInfo = statusLabels[c.status] || { label: c.status, color: 'bg-surface-100 text-surface-700' };
+                const documents = await repo.getDocumentsByCaseId(c.id);
+
+                const verifiedDocsCount = documents.filter((d) => d.verification_status === 'verified').length;
 
                 return (
-                  <div
-                    key={c.id}
-                    className="bg-white rounded-2xl p-6 border border-surface-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-mono font-bold text-surface-600 bg-surface-100 px-2.5 py-1 rounded-md">
+                  <Card key={c.id} className="overflow-hidden hover:border-surface-300 transition-all">
+                    <CardHeader className="bg-surface-50/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-surface-700 bg-white border border-surface-200 px-2.5 py-1 rounded-lg">
                           {c.case_number}
                         </span>
-                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${statusInfo.color}`}>
-                          {statusInfo.label}
-                        </span>
-                        {c.is_private_listing && (
-                          <span className="text-xs font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                            عرض خاص سري
-                          </span>
+                        <CaseStatusBadge status={c.status} />
+
+                        {c.is_private_listing ? (
+                          <Badge variant="purple" size="sm" className="gap-1">
+                            <Lock className="w-3 h-3" />
+                            <span>عرض خاص سري</span>
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" size="sm">
+                            <span>كتالوج عام</span>
+                          </Badge>
                         )}
-                        <span className="text-xs text-surface-400">
-                          {c.case_nature === 'distress_exit' ? 'حالة تعثر وتخارج' : 'تنازل عادي'}
+
+                        <span className="text-[11px] text-surface-500 font-medium">
+                          {c.case_nature === 'distress_exit' ? '• حالة تعثر وتخارج آمن' : '• تنازل عادي'}
                         </span>
                       </div>
 
-                      <h3 className="text-lg font-black text-surface-900">
-                        {property ? `${property.developer_name} - ${property.project_name}` : 'بيانات الوحدة'}
-                      </h3>
+                      <span className="text-[11px] text-surface-400">
+                        تاريخ الطلب: {formatDate(c.created_at)}
+                      </span>
+                    </CardHeader>
 
-                      <p className="text-xs text-surface-500">
-                        {property ? `${property.governorate} • ${property.city_district}` : ''} • تم الإنشاء:{' '}
-                        {formatDate(c.created_at)}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col md:items-end gap-2 text-xs">
-                      {contract && (
-                        <div className="text-right">
-                          <span className="text-surface-500 block">المبلغ المطلوب للبائع:</span>
-                          <span className="text-base font-black text-brand-900">
-                            {formatEGP(contract.deposit_paid + contract.installments_paid)}
+                    <CardContent className="space-y-6 pt-5">
+                      {/* Property & Financial Details Summary */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div className="p-3 bg-surface-50 rounded-xl border border-surface-200/60">
+                          <span className="text-surface-400 block mb-1">الوحدة والمشروع:</span>
+                          <span className="font-bold text-surface-900 text-sm block">
+                            {property ? `${property.developer_name} - ${property.project_name}` : 'بيانات الوحدة'}
+                          </span>
+                          <span className="text-surface-500 mt-0.5 block">
+                            {property ? `${property.governorate} • ${property.city_district}` : ''}
                           </span>
                         </div>
-                      )}
 
-                      <div className="flex gap-2 mt-2">
-                        {c.status === 'draft' ? (
+                        <div className="p-3 bg-brand-50/70 rounded-xl border border-brand-200/60">
+                          <span className="text-brand-700 block mb-1">المبلغ المطلوب للبائع (كاش):</span>
+                          <span className="font-black text-brand-950 text-base block">
+                            {contract
+                              ? formatEGP(contract.deposit_paid + contract.installments_paid)
+                              : '—'}
+                          </span>
+                          <span className="text-[11px] text-brand-800">
+                            {contract ? `مقدم: ${formatEGP(contract.deposit_paid)}` : ''}
+                          </span>
+                        </div>
+
+                        <div className="p-3 bg-surface-50 rounded-xl border border-surface-200/60">
+                          <span className="text-surface-400 block mb-1">حالة المستندات المرفوعة:</span>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="font-bold text-surface-800">
+                              {verifiedDocsCount} من {documents.length} مستند مدقق
+                            </span>
+                            <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                              {verifiedDocsCount === documents.length && documents.length > 0 ? 'مكتمل' : 'قيد الفحص'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-surface-400 mt-1 block">
+                            خزينة خاصة مشفرة (Private Storage)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Workflow Stepper */}
+                      <div className="pt-2 pb-1 border-t border-surface-100">
+                        <span className="text-[11px] font-bold text-surface-400 block mb-4">
+                          مسار المراجعة والاعتماد خادمياً:
+                        </span>
+                        <WorkflowStepper currentStatus={c.status} />
+                      </div>
+
+                      {/* Seller Notes / Operation Feedback */}
+                      {c.seller_notes && (
+                        <div className="p-3 bg-surface-50 rounded-xl text-xs text-surface-600 border border-surface-200/60">
+                          <strong className="text-surface-800">ملاحظاتك المسجلة:</strong> {c.seller_notes}
+                        </div>
+                      )}
+                    </CardContent>
+
+                    {/* Card Actions Footer */}
+                    <div className="p-4 px-6 bg-surface-50/50 border-t border-surface-100 flex items-center justify-between">
+                      <div className="text-xs text-surface-500">
+                        {c.status === 'published' ? (
+                          <span className="text-emerald-700 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>الوحدة معتمدة ومتاحة للمشترين المؤهلين</span>
+                          </span>
+                        ) : (
+                          <span>طلبك قيد المعالجة وفق بوابات النشر الـ 9</span>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        {c.status === 'published' && (
+                          <Link
+                            href={`/units/${c.id}`}
+                            className="inline-flex items-center gap-1.5 bg-white hover:bg-surface-100 text-surface-800 border border-surface-300 text-xs font-bold px-3.5 py-2 rounded-xl transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>معاينة الإعلان</span>
+                          </Link>
+                        )}
+
+                        {c.status === 'draft' && (
                           <Link
                             href="/seller/new-case"
-                            className="bg-brand-700 hover:bg-brand-800 text-white font-bold px-4 py-2 rounded-xl text-xs"
+                            className="inline-flex items-center gap-1.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-2xs"
                           >
-                            استكمال المسودة والإرسال
+                            <span>استكمال المسودة</span>
+                            <ArrowLeft className="w-3.5 h-3.5" />
                           </Link>
-                        ) : (
-                          <span className="text-xs text-surface-500 font-medium py-1">
-                            قيد المتابعة لدى الإدارة
-                          </span>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>
           )}
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -1,119 +1,133 @@
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
-import { formatEGP } from '@/lib/utils';
+import React from 'react';
+import { AppShell } from '@/components/layout/AppShell';
+import { StatCard } from '@/components/ui/StatCard';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { DealStatusBadge } from '@/components/ui/Badge';
+import { getDataRepository } from '@/lib/data';
+import { formatEGP, formatDate } from '@/lib/utils';
 import Link from 'next/link';
+import { Handshake, Calendar, DollarSign, ArrowRight, UserCheck } from 'lucide-react';
 
-export default function AdminDealsPage() {
-  const deals = [
-    {
-      id: 'deal-1',
-      case_number: 'CAS-2026-001',
-      developer_project: 'إعمار مصر - ميفيدا',
-      buyer_name: 'عمر فاروق الشناوي',
-      seller_name: 'أحمد محمد محمود',
-      status: 'transfer_in_progress',
-      status_label: 'جاري التنازل بمقر المطور',
-      agreed_amount: 3200000,
-      meeting_date: '2026-03-05',
-    },
-    {
-      id: 'deal-2',
-      case_number: 'CAS-2026-002',
-      developer_project: 'سودIC - إيست تاون',
-      buyer_name: 'منى إبراهيم حسن',
-      seller_name: 'سارة عبدالله إبراهيم',
-      status: 'offer_accepted',
-      status_label: 'تم قبول العرض / بانتظار موعد المطور',
-      agreed_amount: 4000000,
-      meeting_date: '2026-03-10',
-    },
-  ];
+export default async function AdminDealsPage() {
+  const repo = getDataRepository();
+  const deals = await repo.getAllDeals();
+
+  const totalDeals = deals.length;
+  const inProgressCount = deals.filter((d) => d.status === 'transfer_in_progress' || d.status === 'developer_approval_pending').length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface-50/50">
-      <Navbar />
-
-      <main className="flex-1 py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between pb-6 mb-8 border-b border-surface-200">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-brand-900 bg-brand-100 px-3 py-0.5 rounded-full">
-                  إدارة الصفقات (Deals Pipeline)
-                </span>
-              </div>
-              <h1 className="text-3xl font-black text-surface-900">
-                متابعة صفقات التنازل الجارية
-              </h1>
-            </div>
-
-            <Link
-              href="/admin/cases"
-              className="text-xs font-bold text-surface-700 bg-white border border-surface-300 px-4 py-2.5 rounded-xl hover:bg-surface-50"
-            >
-              ← العودة لجدول الحالات
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {deals.map((deal) => (
-              <div
-                key={deal.id}
-                className="bg-white rounded-3xl p-6 border border-surface-200 shadow-xs space-y-4 text-xs"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-mono font-bold text-brand-900 text-sm block">
-                      {deal.case_number}
-                    </span>
-                    <span className="font-black text-base text-surface-900">
-                      {deal.developer_project}
-                    </span>
-                  </div>
-                  <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-[11px]">
-                    {deal.status_label}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 py-3 border-y border-surface-100">
-                  <div>
-                    <span className="text-surface-500 block">البائع:</span>
-                    <span className="font-bold text-surface-800">{deal.seller_name}</span>
-                  </div>
-                  <div>
-                    <span className="text-surface-500 block">المشتري:</span>
-                    <span className="font-bold text-surface-800">{deal.buyer_name}</span>
-                  </div>
-                  <div>
-                    <span className="text-surface-500 block">المبلغ المتفق عليه كاش:</span>
-                    <span className="font-black text-brand-900 text-sm">
-                      {formatEGP(deal.agreed_amount)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-surface-500 block">موعد مقر المطور:</span>
-                    <span className="font-bold text-surface-800">{deal.meeting_date}</span>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-1">
-                  <span className="text-[11px] text-surface-400">
-                    العمولة في الإطلاق: 0 ج.م (مجاناً)
-                  </span>
-                  <button
-                    type="button"
-                    className="bg-brand-700 hover:bg-brand-800 text-white font-bold px-4 py-2 rounded-xl"
-                  >
-                    تحديث مرحلة الصفقة
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+    <AppShell
+      activeRole="admin"
+      pageTitle="متابعة صفقات التنازل"
+      pageSubtitle="إدارة خط سير التنازلات، مواعيد مقر المطور، والتنسيق بين البائع والمشتري"
+      primaryAction={{
+        label: 'العودة لجدول الحالات',
+        href: '/admin/cases',
+        icon: <ArrowRight className="w-4 h-4" />,
+      }}
+    >
+      <div className="space-y-8">
+        {/* KPI Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+          <StatCard
+            title="إجمالي الصفقات"
+            value={totalDeals}
+            subtitle="صفقات بمختلف المراحل"
+            icon={<Handshake className="w-5 h-5" />}
+            highlightColor="brand"
+          />
+          <StatCard
+            title="بانتظار مقر المطور"
+            value={inProgressCount}
+            subtitle="مواعيد خدمة العملاء"
+            icon={<Calendar className="w-5 h-5" />}
+            highlightColor="amber"
+          />
+          <StatCard
+            title="عمولة المنصة المقررة"
+            value="0 ج.م"
+            subtitle="مجاناً بالكامل طوال الإطلاق"
+            icon={<DollarSign className="w-5 h-5" />}
+            highlightColor="brand"
+          />
         </div>
-      </main>
 
-      <Footer />
-    </div>
+        {/* Deals Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {deals.map(async (deal) => {
+            const c = await repo.getCaseById(deal.case_id);
+            const prop = c ? await repo.getPropertyById(c.property_id) : null;
+            const seller = await repo.getProfile(deal.seller_id);
+            const buyer = await repo.getProfile(deal.buyer_id);
+
+            return (
+              <Card key={deal.id} className="hover:border-surface-300 transition-all">
+                <CardHeader className="bg-surface-50/60 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-surface-700 bg-white border border-surface-200 px-2 py-0.5 rounded">
+                      {c ? c.case_number : deal.id}
+                    </span>
+                    <DealStatusBadge status={deal.status} />
+                  </div>
+                  <span className="text-[11px] text-surface-400">
+                    {formatDate(deal.created_at)}
+                  </span>
+                </CardHeader>
+
+                <CardContent className="space-y-4 pt-4 text-xs">
+                  <div>
+                    <span className="font-bold text-surface-900 text-sm block">
+                      {prop ? `${prop.developer_name} - ${prop.project_name}` : 'مشروع التنازل'}
+                    </span>
+                    <span className="text-surface-500">
+                      {prop ? `${prop.governorate} • ${prop.city_district}` : ''}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-surface-50 rounded-xl border border-surface-200/60">
+                    <div>
+                      <span className="text-surface-400 block mb-0.5">البائع:</span>
+                      <span className="font-bold text-surface-800">{seller ? seller.full_name : 'بائع معتمد'}</span>
+                    </div>
+                    <div>
+                      <span className="text-surface-400 block mb-0.5">المشتري:</span>
+                      <span className="font-bold text-surface-800">{buyer ? buyer.full_name : 'مشتري معتمد'}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-brand-50/70 rounded-xl border border-brand-200/60 flex items-center justify-between">
+                    <div>
+                      <span className="text-brand-800 font-bold block">المبلغ المتفق عليه كاش:</span>
+                      <span className="text-[10px] text-brand-600">يسدد للبائع بمقر المطور</span>
+                    </div>
+                    <span className="font-black text-brand-950 text-sm sm:text-base">
+                      {deal.agreed_cash_amount ? formatEGP(deal.agreed_cash_amount) : 'قيد التدقيق'}
+                    </span>
+                  </div>
+
+                  {deal.notes && (
+                    <div className="p-2.5 bg-surface-50 rounded-xl text-[11px] text-surface-600 border border-surface-200/60">
+                      <strong>الملاحظات التشغيلية:</strong> {deal.notes}
+                    </div>
+                  )}
+                </CardContent>
+
+                <div className="p-4 px-6 bg-surface-50/40 border-t border-surface-100 flex items-center justify-between text-xs">
+                  <span className="text-surface-400 text-[11px]">
+                    التنازل بحضور الطرفين وممثل المطور
+                  </span>
+                  <Link
+                    href={`/admin/cases/${deal.case_id}`}
+                    className="font-bold text-brand-700 hover:text-brand-800"
+                  >
+                    تفاصيل ملف الحالة ←
+                  </Link>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    </AppShell>
   );
 }

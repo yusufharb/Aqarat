@@ -2,6 +2,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { UnitCard } from '@/components/units/UnitCard';
 import { getDataRepository } from '@/lib/data';
+import { EmptyState } from '@/components/ui/EmptyState';
 import Link from 'next/link';
 
 interface UnitsPageProps {
@@ -78,20 +79,14 @@ export default async function UnitsPage({ searchParams }: UnitsPageProps) {
 
           {/* Results Grid */}
           {listings.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-surface-200">
-              <div className="text-4xl mb-3">🔍</div>
-              <h3 className="text-lg font-bold text-surface-800 mb-1">
-                لا توجد وحدات تطابق معايير البحث الحالية
-              </h3>
-              <p className="text-surface-500 text-xs mb-6">
-                جرب تعديل الفلاتر أو إزالة شروط البحث للاطلاع على الفرص الأخرى.
-              </p>
-              <Link
-                href="/units"
-                className="inline-block bg-brand-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-brand-800"
-              >
-                إعادة ضبط الفلاتر
-              </Link>
+            <div className="py-12">
+              <EmptyState
+                icon="🔍"
+                title="لا توجد وحدات تطابق معايير البحث الحالية"
+                description="جرب تعديل الفلاتر أو إزالة شروط البحث للاطلاع على كافة الفرص المعتمدة المتاحة."
+                actionText="إعادة ضبط الفلاتر وعرض الكل"
+                actionHref="/units"
+              />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

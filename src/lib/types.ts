@@ -250,6 +250,24 @@ export interface Deal {
   updated_at: string;
 }
 
+export interface BuyerPreferences {
+  id: string;
+  buyer_id: string;
+  budget_cash: number;
+  max_installment_value: number;
+  preferred_governorates: string[];
+  preferred_districts: string[];
+  preferred_unit_types: UnitType[];
+  updated_at: string;
+}
+
+export interface SavedListing {
+  id: string;
+  buyer_id: string;
+  listing_id: string;
+  saved_at: string;
+}
+
 export interface AuditLogEntry {
   id: string;
   entity_name: string;
