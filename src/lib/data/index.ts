@@ -1,6 +1,7 @@
 import { getEnvConfig } from '../env';
 import type { DataRepository } from './repository';
 import { DemoRepository } from './demo-repository';
+import { SupabaseRepository } from './supabase-repository';
 
 let demoRepositoryInstance: DemoRepository | null = null;
 
@@ -18,8 +19,8 @@ export function getDataRepository(): DataRepository {
     return demoRepositoryInstance;
   }
 
-  // development or production
-  throw new Error('Supabase repository not yet implemented. Set APP_MODE=demo for now.');
+  // development or production: use Supabase
+  return new SupabaseRepository();
 }
 
 export * from './repository';
