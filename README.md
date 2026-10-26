@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# عقار إكزت | Aqar Exit
 
-## Getting Started
+> منصة رقمية لتسهيل التنازل عن وحدات التقسيط العقاري في مصر - بدون أوفر
 
-First, run the development server:
+## نظرة عامة
+
+منصة عقار إكزت تربط بين أصحاب الوحدات العقارية الراغبين في التنازل (سواء لظروف مالية أو لأسباب استثمارية) والمشترين الباحثين عن فرص بسعر التعاقد القديم.
+
+## التقنيات المستخدمة
+
+- **Frontend:** Next.js 16 (App Router) + TypeScript + Tailwind CSS v4
+- **Backend:** Next.js API Routes + Server Actions
+- **Database:** PostgreSQL via Supabase (with Row Level Security)
+- **Auth:** Supabase Auth
+- **Storage:** Supabase Private Storage (for sensitive documents)
+- **Language:** Arabic (RTL layout)
+
+## أوضاع التشغيل
+
+المنصة تدعم ثلاثة أوضاع تشغيل منفصلة:
+
+| الوضع | الوصف | يحتاج Supabase؟ |
+|---|---|---|
+| `demo` | بيانات وهمية في الذاكرة للمعاينة والتطوير المحلي | ❌ لا |
+| `development` | متصل بمشروع Supabase للتطوير | ✅ نعم |
+| `production` | متصل بمشروع Supabase للإنتاج | ✅ نعم |
+
+> ⚠️ **تنبيه أمني:** لا يتم الرجوع تلقائياً إلى وضع Demo عند فشل الاتصال بقاعدة البيانات. إذا كان `APP_MODE=production` ولم تتوفر مفاتيح Supabase، سيتوقف التطبيق بخطأ واضح.
+
+## التشغيل المحلي
+
+### المتطلبات
+- Node.js >= 18
+- npm >= 9
+
+### الخطوات
 
 ```bash
+# 1. استنسخ المشروع
+git clone <repo-url>
+cd Aqarat
+
+# 2. ثبّت الحزم
+npm install
+
+# 3. أنشئ ملف البيئة المحلي
+cp .env.example .env.local
+# (الافتراضي: APP_MODE=demo - لا يحتاج أي إعداد إضافي)
+
+# 4. شغّل خادم التطوير
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# 5. افتح المتصفح على http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### التشغيل مع Supabase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# في .env.local:
+APP_MODE=development
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # خادم فقط
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## هيكل المشروع
 
-## Learn More
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── layout.tsx          # Root layout (RTL, Cairo font)
+│   ├── page.tsx            # Home page
+│   └── globals.css         # Tailwind + brand theme
+├── lib/
+│   ├── types.ts            # TypeScript types and enums
+│   ├── env.ts              # Server-only environment config
+│   ├── utils.ts            # Formatting and utility functions
+│   └── data/
+│       ├── repository.ts   # Data access interface
+│       ├── demo-data.ts    # Fictional demo data
+│       ├── demo-repository.ts  # Demo implementation
+│       └── index.ts        # Repository factory
+supabase/
+│   └── migrations/         # PostgreSQL migration files (Phase B)
+```
 
-To learn more about Next.js, take a look at the following resources:
+## الأمان
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- ❌ لا يتم تمرير `SUPABASE_SERVICE_ROLE_KEY` للمتصفح أبداً
+- ❌ لا تعرض البيانات الشخصية للبائع في الكتالوج العام
+- ✅ الصلاحيات مطبقة على الخادم وقاعدة البيانات (RLS)
+- ✅ المستندات مخزنة في Private Bucket بروابط مؤقتة
+- ✅ سجل التدقيق محمي من التعديل والحذف عبر التطبيق
+- ⚠️ حماية سجل التدقيق لا تمنع مسؤول قاعدة البيانات ذي الصلاحيات المرتفعة
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## الترخيص
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+خاص - جميع الحقوق محفوظة
