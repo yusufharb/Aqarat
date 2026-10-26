@@ -5,10 +5,14 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { formatEGP } from '@/lib/utils';
 import Link from 'next/link';
+import { createSellerCaseAction } from './actions';
 
 export default function NewCaseWizardPage() {
   const [step, setStep] = useState<number>(1);
   const [submitted, setSubmitted] = useState<boolean>(false);
+  const [createdCaseNumber, setCreatedCaseNumber] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -50,13 +54,52 @@ export default function NewCaseWizardPage() {
 
   const totalPaid = formData.depositPaid + formData.installmentsPaid;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.acknowledgedTruth) {
       alert('يرجى تأكيد التعهد بصحة البيانات للمتابعة.');
       return;
     }
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const res = await createSellerCaseAction({
+        governorate: formData.governorate,
+        cityDistrict: formData.cityDistrict,
+        developerName: formData.developerName,
+        projectName: formData.projectName,
+        unitType: formData.unitType as any,
+        areaSqm: Number(formData.areaSqm) || null,
+        floorNumber: Number(formData.floorNumber) || null,
+        deliveryStatus: formData.deliveryStatus as any,
+        expectedDeliveryDate: formData.expectedDeliveryDate || null,
+
+        totalContractPrice: Number(formData.totalContractPrice),
+        depositPaid: Number(formData.depositPaid),
+        installmentsPaid: Number(formData.installmentsPaid),
+        remainingBalance: Number(formData.remainingBalance),
+        installmentValue: Number(formData.installmentValue) || null,
+        installmentFrequency: formData.installmentFrequency as any,
+
+        caseNature: formData.caseNature as any,
+        hasOverdue: formData.hasOverdue,
+        overdueAmount: Number(formData.overdueAmount) || 0,
+        hasLegalNotices: formData.hasLegalNotices,
+        legalNoticeDetails: formData.legalNoticeDetails,
+        isPrivateListing: formData.isPrivateListing,
+      });
+
+      if (!res.success) {
+        setErrorMsg(res.error || 'فشل حفظ الطلب.');
+      } else {
+        setCreatedCaseNumber(res.caseNumber || '');
+        setSubmitted(true);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'حدث خطأ غير متوقع أثناء الاتصال بالخادم.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -119,7 +162,7 @@ export default function NewCaseWizardPage() {
                 تم إرسال طلب التنازل بنجاح للمراجعة!
               </h2>
               <div className="inline-block bg-surface-100 font-mono font-bold text-surface-700 text-sm px-4 py-1.5 rounded-lg mb-4">
-                رقم القيد: CAS-2026-{Math.floor(1000 + Math.random() * 9000)}
+                رقم القيد: {createdCaseNumber || 'CAS-2026-PENDING'}
               </div>
               <p className="text-xs sm:text-sm text-surface-600 max-w-md mx-auto leading-relaxed mb-8">
                 طلبك الآن بحالة <strong className="text-brand-800">قيد الفرز الأولي (Screening)</strong>. سيقوم الفريق المالي والقانوني بمراجعة مطابقة الأرقام والعقد تمهيداً لاعتماد النشر.
@@ -549,24 +592,31 @@ export default function NewCaseWizardPage() {
                     </div>
                   </label>
 
+                  {errorMsg && (
+                    <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-bold">
+                      {errorMsg}
+                    </div>
+                  )}
+
                   <div className="flex justify-between pt-6 border-t border-surface-100">
                     <button
                       type="button"
+                      disabled={isSubmitting}
                       onClick={() => setStep(4)}
-                      className="bg-surface-100 text-surface-700 text-xs font-bold px-6 py-3 rounded-xl"
+                      className="bg-surface-100 text-surface-700 text-xs font-bold px-6 py-3 rounded-xl disabled:opacity-50"
                     >
                       → السابق
                     </button>
                     <button
                       type="submit"
-                      disabled={!formData.acknowledgedTruth}
+                      disabled={!formData.acknowledgedTruth || isSubmitting}
                       className={`text-xs font-bold px-8 py-3.5 rounded-xl transition-all ${
-                        formData.acknowledgedTruth
+                        formData.acknowledgedTruth && !isSubmitting
                           ? 'bg-brand-700 hover:bg-brand-800 text-white cursor-pointer shadow-md'
                           : 'bg-surface-200 text-surface-400 cursor-not-allowed'
                       }`}
                     >
-                      إرسال الطلب للمراجعة الرسمية
+                      {isSubmitting ? 'جاري إرسال الطلب...' : 'إرسال الطلب للمراجعة الرسمية'}
                     </button>
                   </div>
                 </div>

@@ -91,6 +91,9 @@ export interface Profile {
   full_name: string;
   phone: string;
   email: string | null;
+  is_suspended?: boolean;
+  phone_verified?: boolean;
+  email_verified?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -101,6 +104,17 @@ export interface UserRoleAssignment {
   role: UserRole;
   assigned_at: string;
   assigned_by: string | null;
+}
+
+export interface RoleRequest {
+  id: string;
+  user_id: string;
+  requested_role: UserRole;
+  reason: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 }
 
 // Property - the physical real estate unit
@@ -274,9 +288,9 @@ export interface AuditLogEntry {
   entity_id: string;
   action: string;
   actor_id: string | null;
-  old_values: Record<string, unknown> | null;
-  new_values: Record<string, unknown> | null;
-  ip_address: string | null;
+  old_values?: Record<string, unknown> | null;
+  new_values?: Record<string, unknown> | null;
+  ip_address?: string | null;
   timestamp: string;
 }
 

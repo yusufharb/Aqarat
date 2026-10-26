@@ -7,8 +7,10 @@ import { CaseStatusBadge, Badge } from '@/components/ui/Badge';
 import { WorkflowStepper } from '@/components/ui/WorkflowStepper';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getDataRepository } from '@/lib/data';
+import { getCurrentSession } from '@/lib/auth/session';
 import { formatEGP, formatDate } from '@/lib/utils';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   Building,
   FileCheck,
@@ -24,9 +26,13 @@ import {
 } from 'lucide-react';
 
 export default async function SellerDashboardPage() {
+  const session = await getCurrentSession();
+  if (!session) {
+    redirect('/auth/login?returnUrl=/seller/dashboard');
+  }
+
   const repo = getDataRepository();
-  // Seller ID (Ahmed Mohamed)
-  const sellerId = '11111111-1111-4111-8111-111111111111';
+  const sellerId = session.userId;
   const cases = await repo.getCasesBySeller(sellerId);
 
   // Compute status counts

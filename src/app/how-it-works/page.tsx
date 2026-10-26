@@ -11,7 +11,7 @@ export default function HowItWorksPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <h1 className="text-3xl sm:text-4xl font-black text-surface-900 mb-3">
-              كيف تعمل منصة عقار إكزت؟
+              كيف تعمل منصة عقار سواب؟
             </h1>
             <p className="text-surface-600 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
               دليلك الشامل لفهم الإجراءات القانونية والمالية لنقل ملكية وحدات التقسيط بدون أوفر في مصر.

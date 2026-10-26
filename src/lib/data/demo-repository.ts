@@ -7,12 +7,18 @@ import type {
   CaseDocument,
   FinancialReview,
   LegalReview,
+  PublicationGates,
   Lead,
   Deal,
+  DealStatus,
   BuyerPreferences,
   SavedListing,
   Profile,
+  UserRole,
   UserRoleAssignment,
+  RoleRequest,
+  AuditLogEntry,
+  VerificationStatus,
 } from '../types';
 import {
   DEMO_PROFILES,
@@ -24,10 +30,13 @@ import {
   DEMO_DOCUMENTS,
   DEMO_FINANCIAL_REVIEWS,
   DEMO_LEGAL_REVIEWS,
+  DEMO_PUBLICATION_GATES,
   DEMO_LEADS,
   DEMO_DEALS,
   DEMO_BUYER_PREFERENCES,
   DEMO_SAVED_LISTINGS,
+  DEMO_ROLE_REQUESTS,
+  DEMO_AUDIT_LOGS,
   DEMO_GOVERNORATES,
   DEMO_DEVELOPERS,
 } from './demo-data';
@@ -42,10 +51,13 @@ export class DemoRepository implements DataRepository {
   private documents: CaseDocument[];
   private financialReviews: FinancialReview[];
   private legalReviews: LegalReview[];
+  private publicationGates: PublicationGates[];
   private leads: Lead[];
   private deals: Deal[];
   private buyerPreferences: BuyerPreferences[];
   private savedListings: SavedListing[];
+  private roleRequests: RoleRequest[];
+  private auditLogs: AuditLogEntry[];
   private governorates: string[];
   private developers: string[];
 
@@ -59,10 +71,13 @@ export class DemoRepository implements DataRepository {
     this.documents = [...DEMO_DOCUMENTS];
     this.financialReviews = [...DEMO_FINANCIAL_REVIEWS];
     this.legalReviews = [...DEMO_LEGAL_REVIEWS];
+    this.publicationGates = [...DEMO_PUBLICATION_GATES];
     this.leads = [...DEMO_LEADS];
     this.deals = [...DEMO_DEALS];
     this.buyerPreferences = [...DEMO_BUYER_PREFERENCES];
     this.savedListings = [...DEMO_SAVED_LISTINGS];
+    this.roleRequests = [...DEMO_ROLE_REQUESTS];
+    this.auditLogs = [...DEMO_AUDIT_LOGS];
     this.governorates = [...DEMO_GOVERNORATES];
     this.developers = [...DEMO_DEVELOPERS];
   }
@@ -273,6 +288,386 @@ export class DemoRepository implements DataRepository {
 
   async getUserRoles(userId: string): Promise<UserRoleAssignment[]> {
     return this.userRoles.filter((r) => r.user_id === userId);
+  }
+
+  async saveProperty(property: Partial<Property>): Promise<Property> {
+    const id = property.id || crypto.randomUUID();
+    const existingIndex = this.properties.findIndex((p) => p.id === id);
+    const updated: Property = {
+      id,
+      governorate: property.governorate || 'القاهرة',
+      city_district: property.city_district || 'القاهرة الجديدة',
+      developer_name: property.developer_name || 'سوديك',
+      project_name: property.project_name || 'مشروع التنازل',
+      unit_type: property.unit_type || 'apartment',
+      area_sqm: property.area_sqm ?? 120,
+      floor_number: property.floor_number ?? 1,
+      delivery_status: property.delivery_status || 'under_construction',
+      expected_delivery_date: property.expected_delivery_date || null,
+      ...property,
+    };
+    if (existingIndex >= 0) {
+      this.properties[existingIndex] = updated;
+    } else {
+      this.properties.push(updated);
+    }
+    return updated;
+  }
+
+  async saveContract(contract: Partial<Contract>): Promise<Contract> {
+    const id = contract.id || crypto.randomUUID();
+    const existingIndex = this.contracts.findIndex(
+      (c) => c.id === id || (contract.property_id && c.property_id === contract.property_id)
+    );
+    const updated: Contract = {
+      id,
+      property_id: contract.property_id || '',
+      total_contract_price: contract.total_contract_price || 0,
+      deposit_paid: contract.deposit_paid || 0,
+      installments_paid: contract.installments_paid || 0,
+      remaining_balance: contract.remaining_balance || 0,
+      installment_value: contract.installment_value ?? null,
+      installment_frequency: contract.installment_frequency ?? 'quarterly',
+      maintenance_fee: contract.maintenance_fee ?? null,
+      contract_date: contract.contract_date ?? new Date().toISOString(),
+      ...contract,
+    };
+    if (existingIndex >= 0) {
+      this.contracts[existingIndex] = updated;
+    } else {
+      this.contracts.push(updated);
+    }
+    return updated;
+  }
+
+  async saveCaseDocument(doc: Partial<CaseDocument>): Promise<CaseDocument> {
+    const id = doc.id || crypto.randomUUID();
+    const existingIndex = this.documents.findIndex((d) => d.id === id);
+    const updated: CaseDocument = {
+      id,
+      case_id: doc.case_id || '',
+      doc_type: doc.doc_type || 'other',
+      file_name: doc.file_name || 'document.pdf',
+      file_size_bytes: doc.file_size_bytes || 1024 * 1024,
+      mime_type: doc.mime_type || 'application/pdf',
+      verification_status: doc.verification_status || 'pending',
+      verified_by: doc.verified_by ?? null,
+      uploaded_at: doc.uploaded_at || new Date().toISOString(),
+      ...doc,
+    };
+    if (existingIndex >= 0) {
+      this.documents[existingIndex] = updated;
+    } else {
+      this.documents.push(updated);
+    }
+    return updated;
+  }
+
+  async updateDocumentStatus(
+    docId: string,
+    status: VerificationStatus,
+    reviewerId: string,
+    rejectionReason?: string
+  ): Promise<CaseDocument> {
+    const doc = this.documents.find((d) => d.id === docId);
+    if (!doc) {
+      throw new Error(`Document with ID "${docId}" not found.`);
+    }
+    doc.verification_status = status;
+    doc.verified_by = reviewerId;
+    return { ...doc };
+  }
+
+  async saveFinancialReview(review: Partial<FinancialReview>): Promise<FinancialReview> {
+    const id = review.id || crypto.randomUUID();
+    const existingIndex = this.financialReviews.findIndex((r) => r.case_id === review.case_id);
+    const updated: FinancialReview = {
+      id,
+      case_id: review.case_id || '',
+      verified_paid_amount: review.verified_paid_amount || {
+        amount: 0,
+        confidence: 'seller_declared',
+        source_description: null,
+        verified_at: null,
+        verified_by: null,
+      },
+      verified_remaining_amount: review.verified_remaining_amount || {
+        amount: 0,
+        confidence: 'seller_declared',
+        source_description: null,
+        verified_at: null,
+        verified_by: null,
+      },
+      verified_overdue_amount: review.verified_overdue_amount || null,
+      developer_transfer_fee: review.developer_transfer_fee || null,
+      fee_bearer: review.fee_bearer || 'seller',
+      reviewer_id: review.reviewer_id || '',
+      reviewer_notes: review.reviewer_notes || null,
+      reviewed_at: review.reviewed_at || new Date().toISOString(),
+      ...review,
+    };
+    if (existingIndex >= 0) {
+      this.financialReviews[existingIndex] = updated;
+    } else {
+      this.financialReviews.push(updated);
+    }
+    return updated;
+  }
+
+  async saveLegalReview(review: Partial<LegalReview>): Promise<LegalReview> {
+    const id = review.id || crypto.randomUUID();
+    const existingIndex = this.legalReviews.findIndex((r) => r.case_id === review.case_id);
+    const updated: LegalReview = {
+      id,
+      case_id: review.case_id || '',
+      legal_verdict: review.legal_verdict || 'in_progress',
+      developer_assignment_status: review.developer_assignment_status || 'unknown',
+      conditions_checklist: review.conditions_checklist || [],
+      legal_notes: review.legal_notes || null,
+      reviewer_id: review.reviewer_id || '',
+      reviewed_at: review.reviewed_at || new Date().toISOString(),
+      ...review,
+    };
+    if (existingIndex >= 0) {
+      this.legalReviews[existingIndex] = updated;
+    } else {
+      this.legalReviews.push(updated);
+    }
+    return updated;
+  }
+
+  async getPublicationGates(caseId: string): Promise<PublicationGates | null> {
+    const gate = this.publicationGates.find((g) => g.case_id === caseId);
+    return gate || null;
+  }
+
+  async savePublicationGates(gates: Partial<PublicationGates>): Promise<PublicationGates> {
+    const id = gates.id || crypto.randomUUID();
+    const existingIndex = this.publicationGates.findIndex((g) => g.case_id === gates.case_id);
+    const updated: PublicationGates = {
+      id,
+      case_id: gates.case_id || '',
+      gate_1_complete_unit_data: gates.gate_1_complete_unit_data ?? false,
+      gate_2_seller_identity_confirmed: gates.gate_2_seller_identity_confirmed ?? false,
+      gate_3_mandatory_docs_verified: gates.gate_3_mandatory_docs_verified ?? false,
+      gate_4_financial_review_approved: gates.gate_4_financial_review_approved ?? false,
+      gate_5_legal_review_approved: gates.gate_5_legal_review_approved ?? false,
+      gate_6_developer_transfer_clear: gates.gate_6_developer_transfer_clear ?? false,
+      gate_7_publisher_authorized: gates.gate_7_publisher_authorized ?? false,
+      gate_8_pii_sanitized_for_public: gates.gate_8_pii_sanitized_for_public ?? true,
+      gate_9_disclaimers_and_timestamp_ready: gates.gate_9_disclaimers_and_timestamp_ready ?? false,
+      published_by: gates.published_by ?? null,
+      published_at: gates.published_at ?? null,
+      ...gates,
+    };
+    if (existingIndex >= 0) {
+      this.publicationGates[existingIndex] = updated;
+    } else {
+      this.publicationGates.push(updated);
+    }
+    return updated;
+  }
+
+  async createDeal(data: Partial<Deal>): Promise<Deal> {
+    const newDeal: Deal = {
+      id: data.id || crypto.randomUUID(),
+      case_id: data.case_id || '',
+      lead_id: data.lead_id || '',
+      seller_id: data.seller_id || '',
+      buyer_id: data.buyer_id || '',
+      status: data.status || 'lead',
+      agreed_cash_amount: data.agreed_cash_amount ?? null,
+      notes: data.notes ?? null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...data,
+    };
+    this.deals.push(newDeal);
+    return newDeal;
+  }
+
+  async updateDealStatus(dealId: string, status: DealStatus, notes?: string): Promise<Deal> {
+    const deal = this.deals.find((d) => d.id === dealId);
+    if (!deal) {
+      throw new Error(`Deal with ID "${dealId}" not found.`);
+    }
+    deal.status = status;
+    if (notes !== undefined) {
+      deal.notes = notes;
+    }
+    deal.updated_at = new Date().toISOString();
+    return { ...deal };
+  }
+
+  async toggleSavedListing(buyerId: string, caseId: string): Promise<{ saved: boolean }> {
+    const index = this.savedListings.findIndex(
+      (s) => s.buyer_id === buyerId && s.listing_id === caseId
+    );
+    if (index >= 0) {
+      this.savedListings.splice(index, 1);
+      return { saved: false };
+    } else {
+      this.savedListings.push({
+        id: crypto.randomUUID(),
+        buyer_id: buyerId,
+        listing_id: caseId,
+        saved_at: new Date().toISOString(),
+      });
+      return { saved: true };
+    }
+  }
+
+  async isListingSaved(buyerId: string, caseId: string): Promise<boolean> {
+    return this.savedListings.some(
+      (s) => s.buyer_id === buyerId && s.listing_id === caseId
+    );
+  }
+
+  async saveBuyerPreferences(
+    prefs: Partial<BuyerPreferences> & { buyer_id: string }
+  ): Promise<BuyerPreferences> {
+    const existingIndex = this.buyerPreferences.findIndex((p) => p.buyer_id === prefs.buyer_id);
+    const updated: BuyerPreferences = {
+      budget_cash: 0,
+      max_installment_value: 0,
+      preferred_governorates: [],
+      preferred_districts: [],
+      preferred_unit_types: [],
+      ...prefs,
+      id: prefs.id || crypto.randomUUID(),
+      buyer_id: prefs.buyer_id,
+      updated_at: new Date().toISOString(),
+    };
+    if (existingIndex >= 0) {
+      this.buyerPreferences[existingIndex] = updated;
+    } else {
+      this.buyerPreferences.push(updated);
+    }
+    return updated;
+  }
+
+  async getAllUsers(): Promise<Profile[]> {
+    return [...this.profiles];
+  }
+
+  async saveProfile(profile: Partial<Profile> & { id: string }): Promise<Profile> {
+    const index = this.profiles.findIndex((p) => p.id === profile.id);
+    if (index >= 0) {
+      this.profiles[index] = {
+        ...this.profiles[index],
+        ...profile,
+        updated_at: new Date().toISOString(),
+      };
+      return this.profiles[index];
+    }
+    const newProfile: Profile = {
+      full_name: '',
+      phone: '',
+      email: null,
+      is_suspended: false,
+      phone_verified: false,
+      email_verified: false,
+      ...profile,
+      id: profile.id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    this.profiles.push(newProfile);
+    return newProfile;
+  }
+
+  async updateUserStatus(userId: string, isSuspended: boolean): Promise<Profile> {
+    const p = this.profiles.find((u) => u.id === userId);
+    if (!p) {
+      throw new Error(`User with ID "${userId}" not found.`);
+    }
+    p.is_suspended = isSuspended;
+    p.updated_at = new Date().toISOString();
+    return { ...p };
+  }
+
+  async assignUserRole(
+    userId: string,
+    role: UserRole,
+    assignedBy: string
+  ): Promise<UserRoleAssignment> {
+    const existing = this.userRoles.find((r) => r.user_id === userId && r.role === role);
+    if (existing) {
+      return existing;
+    }
+    const assignment: UserRoleAssignment = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      role,
+      assigned_at: new Date().toISOString(),
+      assigned_by: assignedBy,
+    };
+    this.userRoles.push(assignment);
+    return assignment;
+  }
+
+  async revokeUserRole(userId: string, role: UserRole): Promise<boolean> {
+    const index = this.userRoles.findIndex((r) => r.user_id === userId && r.role === role);
+    if (index >= 0) {
+      this.userRoles.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  async getRoleRequests(): Promise<RoleRequest[]> {
+    return [...this.roleRequests];
+  }
+
+  async createRoleRequest(
+    userId: string,
+    requestedRole: UserRole,
+    reason: string
+  ): Promise<RoleRequest> {
+    const newReq: RoleRequest = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      requested_role: requestedRole,
+      reason,
+      status: 'pending',
+      reviewed_by: null,
+      reviewed_at: null,
+      created_at: new Date().toISOString(),
+    };
+    this.roleRequests.push(newReq);
+    return newReq;
+  }
+
+  async resolveRoleRequest(
+    requestId: string,
+    status: 'approved' | 'rejected',
+    reviewerId: string
+  ): Promise<RoleRequest> {
+    const req = this.roleRequests.find((r) => r.id === requestId);
+    if (!req) {
+      throw new Error(`Role request with ID "${requestId}" not found.`);
+    }
+    req.status = status;
+    req.reviewed_by = reviewerId;
+    req.reviewed_at = new Date().toISOString();
+    if (status === 'approved') {
+      await this.assignUserRole(req.user_id, req.requested_role, reviewerId);
+    }
+    return { ...req };
+  }
+
+  async getAuditLogs(limit: number = 50): Promise<AuditLogEntry[]> {
+    return [...this.auditLogs]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, limit);
+  }
+
+  async logAuditEvent(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<void> {
+    this.auditLogs.unshift({
+      ...entry,
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+    });
   }
 
   async getGovernorates(): Promise<string[]> {

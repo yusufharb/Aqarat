@@ -13,6 +13,8 @@ import type {
   Deal,
   BuyerPreferences,
   SavedListing,
+  RoleRequest,
+  AuditLogEntry,
 } from '../types';
 
 // ============================================================================
@@ -926,3 +928,80 @@ export const DEMO_SAVED_LISTINGS: SavedListing[] = [
     saved_at: '2026-02-14T09:30:00Z',
   },
 ];
+
+// ============================================================================
+// Fictional Role Upgrade Requests
+// ============================================================================
+export const DEMO_ROLE_REQUESTS: RoleRequest[] = [
+  {
+    id: 'req-001',
+    user_id: '11111111-1111-4111-8111-111111111111',
+    requested_role: 'buyer',
+    reason: 'أرغب في شراء فرصة بديلة في التجمع بعد التخارج من وحدتي الحالية.',
+    status: 'pending',
+    reviewed_by: null,
+    reviewed_at: null,
+    created_at: '2026-02-16T11:00:00Z',
+  },
+  {
+    id: 'req-002',
+    user_id: '22222222-2222-4222-8222-222222222221',
+    requested_role: 'seller',
+    reason: 'أمتلك وحدة إضافية في الشيخ زايد وأرغب في عرضها للتنازل المعتمد.',
+    status: 'approved',
+    reviewed_by: '99999999-9999-4999-8999-999999999995',
+    reviewed_at: '2026-02-18T14:00:00Z',
+    created_at: '2026-02-17T09:00:00Z',
+  },
+];
+
+// ============================================================================
+// Fictional Audit Logs
+// ============================================================================
+export const DEMO_AUDIT_LOGS: AuditLogEntry[] = [
+  {
+    id: 'log-001',
+    entity_name: 'assignment_cases',
+    entity_id: 'c1111111-1111-4111-8111-111111111111',
+    action: 'CASE_STATUS_TRANSITION',
+    actor_id: '99999999-9999-4999-8999-999999999994',
+    old_values: { status: 'approved' },
+    new_values: { status: 'published', gates_evaluated: true },
+    ip_address: '192.168.1.10',
+    timestamp: '2026-02-05T12:00:00Z',
+  },
+  {
+    id: 'log-002',
+    entity_name: 'financial_reviews',
+    entity_id: 'c1111111-1111-4111-8111-111111111111',
+    action: 'FINANCIAL_REVIEW_APPROVED',
+    actor_id: '99999999-9999-4999-8999-999999999992',
+    old_values: null,
+    new_values: { verified_paid_amount: 1950000, verified_remaining_amount: 1450000 },
+    ip_address: '192.168.1.12',
+    timestamp: '2026-02-04T15:30:00Z',
+  },
+  {
+    id: 'log-003',
+    entity_name: 'legal_reviews',
+    entity_id: 'c1111111-1111-4111-8111-111111111111',
+    action: 'LEGAL_REVIEW_APPROVED',
+    actor_id: '99999999-9999-4999-8999-999999999993',
+    old_values: null,
+    new_values: { legal_verdict: 'eligible', developer_status: 'confirmed' },
+    ip_address: '192.168.1.15',
+    timestamp: '2026-02-04T16:00:00Z',
+  },
+  {
+    id: 'log-004',
+    entity_name: 'profiles',
+    entity_id: '22222222-2222-4222-8222-222222222221',
+    action: 'ROLE_ASSIGNED',
+    actor_id: '99999999-9999-4999-8999-999999999995',
+    old_values: { roles: ['buyer'] },
+    new_values: { roles: ['buyer', 'seller'] },
+    ip_address: '192.168.1.1',
+    timestamp: '2026-02-18T14:00:00Z',
+  },
+];
+

@@ -133,10 +133,10 @@ export default function CalculatorPage() {
                 </div>
               </div>
 
-              {/* Option B: Aqar Exit Assignment */}
+              {/* Option B: Aqar Swap Assignment */}
               <div className="bg-emerald-50/60 rounded-2xl p-6 border-2 border-brand-500">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-brand-900 text-base">في حالة التنازل عبر عقار إكزت</h3>
+                  <h3 className="font-bold text-brand-900 text-base">في حالة التنازل عبر عقار سواب</h3>
                   <span className="text-xs bg-brand-100 text-brand-800 font-bold px-2.5 py-0.5 rounded-full">
                     الخيار الأفضل
                   </span>

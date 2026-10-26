@@ -1,9 +1,12 @@
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { getDataRepository } from '@/lib/data';
+import { getCurrentSession } from '@/lib/auth/session';
 import { formatEGP, formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { InquiryForm } from './InquiryForm';
+import { SaveListingButton } from './SaveListingButton';
 
 interface UnitDetailPageProps {
   params: Promise<{ id: string }>;
@@ -17,6 +20,9 @@ export default async function UnitDetailPage({ params }: UnitDetailPageProps) {
   if (!listing) {
     notFound();
   }
+
+  const session = await getCurrentSession();
+  const isSaved = session ? await repo.isListingSaved(session.userId, listing.id) : false;
 
   const { property, total_contract_price, total_paid, remaining_balance, developer_transfer_fee } = listing;
 
@@ -68,11 +74,14 @@ export default async function UnitDetailPage({ params }: UnitDetailPageProps) {
                 </p>
               </div>
 
-              <div className="text-left bg-brand-50 p-4 rounded-2xl border border-brand-200/60">
-                <span className="text-xs text-brand-800 block">المبلغ المطلوب للبائع (كاش):</span>
-                <span className="text-2xl font-black text-brand-900">
-                  {formatEGP(total_paid.amount)}
-                </span>
+              <div className="flex flex-col items-end gap-3">
+                <SaveListingButton caseId={listing.id} initialIsSaved={isSaved} />
+                <div className="text-left bg-brand-50 p-4 rounded-2xl border border-brand-200/60 w-full sm:w-auto">
+                  <span className="text-xs text-brand-800 block">المبلغ المطلوب للبائع (كاش):</span>
+                  <span className="text-2xl font-black text-brand-900">
+                    {formatEGP(total_paid.amount)}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -202,63 +211,7 @@ export default async function UnitDetailPage({ params }: UnitDetailPageProps) {
 
             {/* Interest CTA Box (1 Col) */}
             <div>
-              <div className="bg-white rounded-3xl p-6 border border-surface-200 shadow-xs sticky top-28">
-                <h3 className="text-lg font-bold text-surface-900 mb-2">
-                  هل هذه الفرصة مناسبة لك؟
-                </h3>
-                <p className="text-xs text-surface-500 mb-6 leading-relaxed">
-                  سجل اهتمامك الآن للتواصل معك وترتيب استكمال الاستفسارات ومرافقتك في إجراءات التنازل بمقر المطور.
-                </p>
-
-                <form className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-surface-700 mb-1">الاسم بالكامل</label>
-                    <input
-                      type="text"
-                      placeholder="أدخل اسمك الكريم"
-                      className="w-full text-xs p-3 rounded-xl border border-surface-300 focus:outline-none focus:border-brand-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-surface-700 mb-1">رقم الهاتف (واتساب)</label>
-                    <input
-                      type="tel"
-                      placeholder="010xxxxxxxx"
-                      className="w-full text-xs p-3 rounded-xl border border-surface-300 focus:outline-none focus:border-brand-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-surface-700 mb-1">الميزانية النقدية المتاحة (كاش)</label>
-                    <input
-                      type="number"
-                      placeholder="مثال: 2000000"
-                      className="w-full text-xs p-3 rounded-xl border border-surface-300 focus:outline-none focus:border-brand-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-surface-700 mb-1">أقصى قسط مريح دورياً</label>
-                    <input
-                      type="number"
-                      placeholder="مثال: 200000"
-                      className="w-full text-xs p-3 rounded-xl border border-surface-300 focus:outline-none focus:border-brand-600"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    className="w-full bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold py-3.5 rounded-xl shadow-sm transition-colors mt-2"
-                  >
-                    إرسال طلب اهتمام بالوحدة (مجاناً)
-                  </button>
-                </form>
-
-                <div className="mt-4 pt-4 border-t border-surface-100 text-[11px] text-surface-400 text-center">
-                  🔒 بياناتك مشفرة ولا يتم مشاركتها إلا مع فريق المراجعة والتشغيل.
-                </div>
-              </div>
+              <InquiryForm caseId={listing.id} />
             </div>
           </div>
         </div>

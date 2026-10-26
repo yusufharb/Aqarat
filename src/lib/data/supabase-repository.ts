@@ -7,11 +7,17 @@ import {
   CaseDocument,
   FinancialReview,
   LegalReview,
+  PublicationGates,
   Lead,
   Deal,
+  DealStatus,
   BuyerPreferences,
   Profile,
+  UserRole,
   UserRoleAssignment,
+  RoleRequest,
+  AuditLogEntry,
+  VerificationStatus,
 } from '../types';
 import { createServerSupabaseClient } from '../supabase/server';
 
@@ -350,5 +356,302 @@ export class SupabaseRepository implements DataRepository {
     const supabase = await createServerSupabaseClient();
     const { data } = await supabase.from('reference_developers').select('name_ar');
     return (data || []).map((r: { name_ar: string }) => r.name_ar);
+  }
+
+  async saveProperty(property: Partial<Property>): Promise<Property> {
+    const supabase = await createServerSupabaseClient();
+    if (property.id) {
+      const { data, error } = await supabase
+        .from('properties')
+        .upsert(property)
+        .select()
+        .single();
+      if (error) throw new Error(`Failed to save property: ${error.message}`);
+      return data as Property;
+    } else {
+      const { data, error } = await supabase
+        .from('properties')
+        .insert(property)
+        .select()
+        .single();
+      if (error) throw new Error(`Failed to create property: ${error.message}`);
+      return data as Property;
+    }
+  }
+
+  async saveContract(contract: Partial<Contract>): Promise<Contract> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('contracts')
+      .upsert(contract)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to save contract: ${error.message}`);
+    return data as Contract;
+  }
+
+  async saveCaseDocument(doc: Partial<CaseDocument>): Promise<CaseDocument> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('case_documents')
+      .upsert(doc)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to save document: ${error.message}`);
+    return data as CaseDocument;
+  }
+
+  async updateDocumentStatus(
+    docId: string,
+    status: VerificationStatus,
+    reviewerId: string,
+    rejectionReason?: string
+  ): Promise<CaseDocument> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('case_documents')
+      .update({
+        verification_status: status,
+        verified_by: reviewerId,
+        rejection_reason: rejectionReason || null,
+      })
+      .eq('id', docId)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to update document status: ${error.message}`);
+    return data as CaseDocument;
+  }
+
+  async saveFinancialReview(review: Partial<FinancialReview>): Promise<FinancialReview> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('financial_reviews')
+      .upsert(review)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to save financial review: ${error.message}`);
+    return data as FinancialReview;
+  }
+
+  async saveLegalReview(review: Partial<LegalReview>): Promise<LegalReview> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('legal_reviews')
+      .upsert(review)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to save legal review: ${error.message}`);
+    return data as LegalReview;
+  }
+
+  async getPublicationGates(caseId: string): Promise<PublicationGates | null> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('publication_gates')
+      .select('*')
+      .eq('case_id', caseId)
+      .single();
+    if (error) return null;
+    return data as PublicationGates;
+  }
+
+  async savePublicationGates(gates: Partial<PublicationGates>): Promise<PublicationGates> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('publication_gates')
+      .upsert(gates)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to save publication gates: ${error.message}`);
+    return data as PublicationGates;
+  }
+
+  async createDeal(data: Partial<Deal>): Promise<Deal> {
+    const supabase = await createServerSupabaseClient();
+    const { data: result, error } = await supabase
+      .from('deals')
+      .insert(data)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to create deal: ${error.message}`);
+    return result as Deal;
+  }
+
+  async updateDealStatus(dealId: string, status: DealStatus, notes?: string): Promise<Deal> {
+    const supabase = await createServerSupabaseClient();
+    const updatePayload: Record<string, unknown> = { status };
+    if (notes !== undefined) updatePayload.closing_notes = notes;
+    const { data, error } = await supabase
+      .from('deals')
+      .update(updatePayload)
+      .eq('id', dealId)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to update deal status: ${error.message}`);
+    return data as Deal;
+  }
+
+  async toggleSavedListing(buyerId: string, caseId: string): Promise<{ saved: boolean }> {
+    const supabase = await createServerSupabaseClient();
+    const { data: existing } = await supabase
+      .from('saved_listings')
+      .select('id')
+      .eq('buyer_id', buyerId)
+      .eq('case_id', caseId)
+      .single();
+
+    if (existing) {
+      await supabase.from('saved_listings').delete().eq('id', existing.id);
+      return { saved: false };
+    } else {
+      await supabase.from('saved_listings').insert({ buyer_id: buyerId, case_id: caseId });
+      return { saved: true };
+    }
+  }
+
+  async isListingSaved(buyerId: string, caseId: string): Promise<boolean> {
+    const supabase = await createServerSupabaseClient();
+    const { data } = await supabase
+      .from('saved_listings')
+      .select('id')
+      .eq('buyer_id', buyerId)
+      .eq('case_id', caseId)
+      .single();
+    return Boolean(data);
+  }
+
+  async saveBuyerPreferences(
+    prefs: Partial<BuyerPreferences> & { buyer_id: string }
+  ): Promise<BuyerPreferences> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('buyer_preferences')
+      .upsert(prefs, { onConflict: 'buyer_id' })
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to save preferences: ${error.message}`);
+    return data as BuyerPreferences;
+  }
+
+  async getAllUsers(): Promise<Profile[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(`Failed to list users: ${error.message}`);
+    return (data || []) as Profile[];
+  }
+
+  async saveProfile(profile: Partial<Profile> & { id: string }): Promise<Profile> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert(profile)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to save profile: ${error.message}`);
+    return data as Profile;
+  }
+
+  async updateUserStatus(userId: string, isSuspended: boolean): Promise<Profile> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ is_suspended: isSuspended })
+      .eq('id', userId)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to update user status: ${error.message}`);
+    return data as Profile;
+  }
+
+  async assignUserRole(
+    userId: string,
+    role: UserRole,
+    assignedBy: string
+  ): Promise<UserRoleAssignment> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('user_roles')
+      .upsert({ user_id: userId, role, assigned_by: assignedBy }, { onConflict: 'user_id,role' })
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to assign role: ${error.message}`);
+    return data as UserRoleAssignment;
+  }
+
+  async revokeUserRole(userId: string, role: UserRole): Promise<boolean> {
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('role', role);
+    return !error;
+  }
+
+  async getRoleRequests(): Promise<RoleRequest[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('role_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return (data || []) as RoleRequest[];
+  }
+
+  async createRoleRequest(
+    userId: string,
+    requestedRole: UserRole,
+    reason: string
+  ): Promise<RoleRequest> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('role_requests')
+      .insert({ user_id: userId, requested_role: requestedRole, reason })
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to create role request: ${error.message}`);
+    return data as RoleRequest;
+  }
+
+  async resolveRoleRequest(
+    requestId: string,
+    status: 'approved' | 'rejected',
+    reviewerId: string
+  ): Promise<RoleRequest> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('role_requests')
+      .update({
+        status,
+        reviewed_by: reviewerId,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .select()
+      .single();
+    if (error) throw new Error(`Failed to resolve role request: ${error.message}`);
+    if (status === 'approved') {
+      await this.assignUserRole(data.user_id, data.requested_role, reviewerId);
+    }
+    return data as RoleRequest;
+  }
+
+  async getAuditLogs(limit: number = 50): Promise<AuditLogEntry[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return (data || []) as AuditLogEntry[];
+  }
+
+  async logAuditEvent(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<void> {
+    const supabase = await createServerSupabaseClient();
+    await supabase.from('audit_logs').insert(entry);
   }
 }

@@ -7,9 +7,11 @@ import { DealStatusBadge, Badge } from '@/components/ui/Badge';
 import { UnitCard } from '@/components/units/UnitCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getDataRepository } from '@/lib/data';
+import { getCurrentSession } from '@/lib/auth/session';
 import { formatEGP, formatDate } from '@/lib/utils';
 import type { Deal, PublicListing, Lead } from '@/lib/types';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   Bookmark,
   FileText,
@@ -26,9 +28,13 @@ import {
 } from 'lucide-react';
 
 export default async function BuyerDashboardPage() {
+  const session = await getCurrentSession();
+  if (!session) {
+    redirect('/auth/login?returnUrl=/buyer/dashboard');
+  }
+
   const repo = getDataRepository();
-  // Buyer ID (Omar Farouk)
-  const buyerId = '22222222-2222-4222-8222-222222222221';
+  const buyerId = session.userId;
 
   const [savedListings, leads, deals, preferences] = await Promise.all([
     repo.getBuyerSavedListings(buyerId),

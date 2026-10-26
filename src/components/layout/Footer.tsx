@@ -11,7 +11,7 @@ export function Footer() {
               <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white font-bold text-xl">
                 ع
               </div>
-              <span className="text-2xl font-black text-white">عقار إكزت</span>
+              <span className="text-2xl font-black text-white">عقار سواب</span>
             </div>
             <p className="text-surface-400 text-sm leading-relaxed max-w-md">
               المنصة المتخصصة الأولى في مصر لإدارة وتوثيق عمليات التنازل عن وحدات التقسيط العقاري بدون أوفر. نوفر مخرجاً آمناً للمتعثرين والراغبين في التخارج وفرصاً حقيقية للمشترين بأسعار التعاقد القديمة.
@@ -69,12 +69,12 @@ export function Footer() {
         {/* Legal Disclaimer Box */}
         <div className="bg-surface-800/80 rounded-2xl p-5 mb-8 border border-surface-700/60 text-xs leading-relaxed text-surface-400">
           <strong className="text-surface-200 block mb-1">إخلاء مسؤولية وتنبيه قانوني:</strong>
-          منصة عقار إكزت هي منصة تقنية استشارية لتنظيم وتوثيق خطوات التنازل العقاري ولا تمثل جهة تمويل أو حساب ضمان بنكي (Escrow). المبالغ المعروضة تعتمد على العقود وإيصالات السداد وكشوف الحساب الصادرة عن المطورين في تاريخ المراجعة وقد تخضع للتغيير أو لتطبيق رسوم إدارية من المطور. التنازل الرسمي ونقل الملكية وسداد المبالغ يتم حصراً بالحضور الشخصي للطرفين أو وكلائهما الرسميين بمقر المطور العقاري المعتمد ووفق لوائحه المعتمدة.
+          منصة عقار سواب هي منصة تقنية استشارية لتنظيم وتوثيق خطوات التنازل العقاري ولا تمثل جهة تمويل أو حساب ضمان بنكي (Escrow). المبالغ المعروضة تعتمد على العقود وإيصالات السداد وكشوف الحساب الصادرة عن المطورين في تاريخ المراجعة وقد تخضع للتغيير أو لتطبيق رسوم إدارية من المطور. التنازل الرسمي ونقل الملكية وسداد المبالغ يتم حصراً بالحضور الشخصي للطرفين أو وكلائهما الرسميين بمقر المطور العقاري المعتمد ووفق لوائحه المعتمدة.
         </div>
 
         {/* Bottom bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-surface-800 text-xs text-surface-500 gap-4">
-          <p>© 2026 عقار إكزت (Aqar Exit). جميع الحقوق محفوظة.</p>
+          <p>© 2026 عقار سواب (Aqar Swap). جميع الحقوق محفوظة.</p>
           <div className="flex gap-6">
             <span>تغطية تشمل جميع محافظات جمهورية مصر العربية</span>
           </div>

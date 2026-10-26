@@ -28,8 +28,8 @@ export function Navbar() {
                 ع
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-black text-surface-900 tracking-tight">عقار إكزت</span>
-                <span className="text-[10px] text-surface-500 font-bold -mt-0.5">منصة التنازل العقاري بدون أوفر</span>
+                <span className="text-xl font-black text-surface-900 tracking-tight">عقار سواب</span>
+                <span className="text-[10px] text-surface-500 font-bold -mt-0.5">Aqar Swap • التنازل العقاري المعتمد</span>
               </div>
             </Link>
 
@@ -54,41 +54,29 @@ export function Navbar() {
 
           {/* Left side in RTL: Action Buttons & Dashboards */}
           <div className="hidden sm:flex items-center gap-3">
-            {/* Quick Portal Switcher Pills */}
-            <div className="flex items-center bg-surface-100 p-1 rounded-xl text-[11px] font-bold text-surface-700 border border-surface-200/80">
+            {/* Quick Auth Links */}
+            <div className="flex items-center gap-2 text-xs font-bold text-surface-700">
               <Link
-                href="/seller/dashboard"
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  pathname.startsWith('/seller') ? 'bg-white text-surface-900 shadow-2xs font-extrabold' : 'hover:text-surface-900'
-                }`}
+                href="/auth/login"
+                className="px-3 py-2 rounded-xl text-surface-700 hover:text-brand-700 transition-colors"
               >
-                بوابة البائع
+                تسجيل الدخول
               </Link>
               <Link
-                href="/buyer/dashboard"
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  pathname.startsWith('/buyer') ? 'bg-white text-surface-900 shadow-2xs font-extrabold' : 'hover:text-surface-900'
-                }`}
+                href="/auth/register"
+                className="px-3 py-2 bg-surface-100 hover:bg-surface-200 text-surface-800 rounded-xl transition-colors"
               >
-                بوابة المشتري
-              </Link>
-              <Link
-                href="/admin/cases"
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
-                  pathname.startsWith('/admin') ? 'bg-white text-surface-900 shadow-2xs font-extrabold' : 'hover:text-surface-900'
-                }`}
-              >
-                الإدارة
+                إنشاء حساب
               </Link>
             </div>
 
-            {/* Primary CTA (matching Image 1 'أضف عقارك') */}
+            {/* Primary CTA */}
             <Link
               href="/seller/new-case"
               className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-colors shrink-0"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>اعرض وحدتك للتخارج</span>
+              <span>اعرض وحدتك للتنازل</span>
             </Link>
           </div>
 

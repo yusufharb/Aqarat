@@ -20,6 +20,7 @@ import {
   Search,
   Bell,
   User,
+  Users,
   ArrowRightLeft,
 } from 'lucide-react';
 
@@ -64,10 +65,11 @@ export function AppShell({
       { label: 'تصفح الكتالوج', href: '/units', icon: Search },
     ],
     admin: [
-      { label: 'نظرة عامة والفرز', href: '/admin/cases', icon: LayoutDashboard },
-      { label: 'جدول الحالات', href: '/admin/cases', icon: FolderOpen },
-      { label: 'متابعة الصفقات', href: '/admin/deals', icon: Handshake },
-      { label: 'سجل التدقيق', href: '/admin/audit-logs', icon: History },
+      { label: 'لوحة التحكم المركزية', href: '/control-room', icon: LayoutDashboard },
+      { label: 'إدارة الحالات والطلبات', href: '/control-room/cases', icon: FolderOpen },
+      { label: 'إدارة المستخدمين والصلاحيات', href: '/control-room/users', icon: Users },
+      { label: 'متابعة الصفقات', href: '/control-room/deals', icon: Handshake },
+      { label: 'سجل التدقيق المالي والقانوني', href: '/control-room/audit-logs', icon: History },
       { label: 'الكتالوج العام', href: '/units', icon: Search },
     ],
   };
@@ -76,9 +78,9 @@ export function AppShell({
 
   // Active role badge labels
   const roleBadges: Record<UserRoleContext, { name: string; userDesc: string }> = {
-    seller: { name: 'بوابة البائع', userDesc: 'أحمد محمد (مالك وحدة)' },
-    buyer: { name: 'بوابة المشتري', userDesc: 'عمر فاروق (مشتري معتمد)' },
-    admin: { name: 'إدارة العمليات', userDesc: 'فريق الفحص والتدقيق' },
+    seller: { name: 'بوابة البائع', userDesc: 'حساب بائع معتمد' },
+    buyer: { name: 'بوابة المشتري', userDesc: 'حساب مشتري موثق' },
+    admin: { name: 'غرفة التحكم المركزية', userDesc: 'فريق الفحص والاعتماد' },
   };
 
   return (
@@ -92,8 +94,8 @@ export function AppShell({
               ع
             </div>
             <div>
-              <span className="text-xl font-black text-surface-900 block leading-none">عقار إكزت</span>
-              <span className="text-[10px] text-surface-400 font-bold mt-1 block">Aqar Exit Platform</span>
+              <span className="text-xl font-black text-surface-900 block leading-none">عقار سواب</span>
+              <span className="text-[10px] text-surface-400 font-bold mt-1 block">Aqar Swap Platform</span>
             </div>
           </Link>
         </div>

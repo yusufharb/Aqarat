@@ -38,7 +38,7 @@ export function ComparisonTable() {
             معايير الأمان والشفافية
           </span>
           <h2 className="text-2xl sm:text-3xl font-black text-surface-900 mb-2">
-            ليه تختار منصة عقار إكزت للتنازل؟
+            ليه تختار منصة عقار سواب للتنازل؟
           </h2>
           <p className="text-surface-600 text-xs sm:text-sm">
             نظام متكامل يضمن حقوق البائع والمشتري تحت إشراف الشركات العقارية المطورة.
@@ -76,7 +76,7 @@ export function ComparisonTable() {
               <tr className="border-b border-surface-200 bg-surface-100 text-xs font-bold text-surface-700">
                 <th className="p-4 sm:p-5 w-1/4">وجه المقارنة</th>
                 <th className="p-4 sm:p-5 w-1/3 bg-brand-50/80 text-brand-900 border-x-2 border-brand-600">
-                  <span className="text-sm font-black block">التنازل عبر عقار إكزت</span>
+                  <span className="text-sm font-black block">التنازل عبر عقار سواب</span>
                   <span className="text-[11px] font-normal text-brand-700">الخيار الأكثر أماناً لأموالك</span>
                 </th>
                 <th className="p-4 sm:p-5 w-1/3 text-surface-700">
