@@ -69,17 +69,82 @@ function initDemoCredentials() {
     passwordHash: defaultHash,
   });
 
-  // Youssef (Admin)
+  // Youssef (Admin / System Admin)
+  const adminId = '77777777-7777-4777-8777-777777777771';
   DEMO_CREDENTIALS.set('admin.youssef@aqarexit.internal', {
-    userId: '99999999-9999-4999-8999-999999999995',
+    userId: adminId,
     passwordHash: defaultHash,
   });
   DEMO_CREDENTIALS.set('admin@aqarswap.com', {
-    userId: '99999999-9999-4999-8999-999999999995',
+    userId: adminId,
     passwordHash: defaultHash,
   });
-  DEMO_CREDENTIALS.set('+201099999995', {
-    userId: '99999999-9999-4999-8999-999999999995',
+  DEMO_CREDENTIALS.set('admin', {
+    userId: adminId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('+201200000005', {
+    userId: adminId,
+    passwordHash: defaultHash,
+  });
+
+  // Karim (Operations)
+  const opsId = '33333333-3333-4333-8333-333333333331';
+  DEMO_CREDENTIALS.set('ops.karim@aqarexit.internal', {
+    userId: opsId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('ops@aqarswap.com', {
+    userId: opsId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('+201200000001', {
+    userId: opsId,
+    passwordHash: defaultHash,
+  });
+
+  // Tarek (Finance Reviewer)
+  const financeId = '44444444-4444-4444-8444-444444444441';
+  DEMO_CREDENTIALS.set('finance.tarek@aqarexit.internal', {
+    userId: financeId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('finance@aqarswap.com', {
+    userId: financeId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('+201200000002', {
+    userId: financeId,
+    passwordHash: defaultHash,
+  });
+
+  // Mahmoud (Legal Reviewer)
+  const legalId = '55555555-5555-4555-8555-555555555551';
+  DEMO_CREDENTIALS.set('legal.mahmoud@aqarexit.internal', {
+    userId: legalId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('legal@aqarswap.com', {
+    userId: legalId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('+201200000003', {
+    userId: legalId,
+    passwordHash: defaultHash,
+  });
+
+  // Nadine (Publisher)
+  const publisherId = '66666666-6666-4666-8666-666666666661';
+  DEMO_CREDENTIALS.set('publisher.nadine@aqarexit.internal', {
+    userId: publisherId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('publisher@aqarswap.com', {
+    userId: publisherId,
+    passwordHash: defaultHash,
+  });
+  DEMO_CREDENTIALS.set('+201200000004', {
+    userId: publisherId,
     passwordHash: defaultHash,
   });
 }
@@ -394,7 +459,16 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
       redirectTo = '/buyer/dashboard';
     }
 
-    return { success: true, redirectTo };
+    const sessionUser: AuthSession = {
+      userId: profile.id,
+      email: profile.email,
+      phone: profile.phone,
+      fullName: profile.full_name,
+      roles,
+      isSuspended: Boolean(profile.is_suspended),
+    };
+
+    return { success: true, redirectTo, user: sessionUser };
   }
 
   // Supabase Auth Mode
@@ -431,7 +505,16 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
       redirectTo = '/buyer/dashboard';
     }
 
-    return { success: true, redirectTo };
+    const sessionUser: AuthSession = {
+      userId: data.user.id,
+      email: profile?.email || data.user.email || null,
+      phone: profile?.phone || '',
+      fullName: profile?.full_name || 'مستخدم',
+      roles,
+      isSuspended: Boolean(profile?.is_suspended),
+    };
+
+    return { success: true, redirectTo, user: sessionUser };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return { success: false, error: `خطأ في الاتصال: ${msg}` };

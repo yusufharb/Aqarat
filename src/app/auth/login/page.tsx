@@ -120,22 +120,29 @@ export default function LoginPage() {
           {/* Quick Demo Access Pills */}
           <div className="mt-6 pt-5 border-t border-surface-100">
             <span className="text-[11px] font-bold text-surface-400 block mb-2 text-center">
-              حسابات تجريبية سريعة للمعاينة والاختبار:
+              حسابات تجريبية سريعة للمعاينة والاختبار (كلمة المرور: Password123):
             </span>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="grid grid-cols-3 gap-2 text-[11px]">
               <button
                 type="button"
                 onClick={() => fillDemoAccount('seller.ahmed@example.com', 'Password123')}
-                className="p-2 rounded-xl bg-surface-50 hover:bg-surface-100 border border-surface-200 text-surface-700 font-bold transition-colors"
+                className="p-2 rounded-xl bg-surface-50 hover:bg-surface-100 border border-surface-200 text-surface-700 font-bold transition-colors text-center"
               >
-                👤 بائع: أحمد محمد
+                👤 بائع: أحمد
               </button>
               <button
                 type="button"
                 onClick={() => fillDemoAccount('buyer.omar@example.com', 'Password123')}
-                className="p-2 rounded-xl bg-surface-50 hover:bg-surface-100 border border-surface-200 text-surface-700 font-bold transition-colors"
+                className="p-2 rounded-xl bg-surface-50 hover:bg-surface-100 border border-surface-200 text-surface-700 font-bold transition-colors text-center"
               >
-                👤 مشتري: عمر فاروق
+                👤 مشتري: عمر
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoAccount('admin@aqarswap.com', 'Password123')}
+                className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold transition-colors text-center"
+              >
+                🛡️ مشرف: يوسف
               </button>
             </div>
           </div>

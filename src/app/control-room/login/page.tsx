@@ -117,15 +117,42 @@ export default function AdminLoginPage() {
           {/* Quick Admin Testing Pill */}
           <div className="mt-6 pt-5 border-t border-surface-700/60">
             <span className="text-[11px] font-bold text-surface-400 block mb-2 text-center">
-              حساب تجريبي للمشرف العام:
+              حسابات تجريبية سريعة لفريق الإدارة والتدقيق (كلمة المرور: Password123):
             </span>
-            <button
-              type="button"
-              onClick={() => fillAdminAccount('admin@aqarswap.com')}
-              className="w-full p-2.5 rounded-xl bg-surface-700/50 hover:bg-surface-700 border border-surface-600 text-surface-200 text-xs font-bold transition-colors text-center block"
-            >
-              🛡️ يوسف كمال (المشرف العام والنظام)
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => fillAdminAccount('admin@aqarswap.com')}
+                className="p-2.5 rounded-xl bg-surface-700/60 hover:bg-surface-700 border border-brand-500/40 text-brand-300 font-bold transition-colors text-right flex items-center justify-between"
+              >
+                <span>🛡️ يوسف رمزي (المشرف العام)</span>
+                <span className="text-[10px] bg-brand-900/60 px-2 py-0.5 rounded text-brand-300 font-mono">admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillAdminAccount('ops@aqarswap.com')}
+                className="p-2.5 rounded-xl bg-surface-700/50 hover:bg-surface-700 border border-surface-600 text-surface-200 font-bold transition-colors text-right flex items-center justify-between"
+              >
+                <span>⚙️ كريم مصطفى (التشغيل)</span>
+                <span className="text-[10px] bg-surface-900/60 px-2 py-0.5 rounded text-blue-300 font-mono">ops</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillAdminAccount('finance@aqarswap.com')}
+                className="p-2.5 rounded-xl bg-surface-700/50 hover:bg-surface-700 border border-surface-600 text-surface-200 font-bold transition-colors text-right flex items-center justify-between"
+              >
+                <span>💰 طارق كمال (مراجعة مالية)</span>
+                <span className="text-[10px] bg-surface-900/60 px-2 py-0.5 rounded text-emerald-300 font-mono">finance</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillAdminAccount('legal@aqarswap.com')}
+                className="p-2.5 rounded-xl bg-surface-700/50 hover:bg-surface-700 border border-surface-600 text-surface-200 font-bold transition-colors text-right flex items-center justify-between"
+              >
+                <span>⚖️ محمود النجار (مراجعة قانونية)</span>
+                <span className="text-[10px] bg-surface-900/60 px-2 py-0.5 rounded text-amber-300 font-mono">legal</span>
+              </button>
+            </div>
           </div>
         </div>
 

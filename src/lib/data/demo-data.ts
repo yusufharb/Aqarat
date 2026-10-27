@@ -97,7 +97,7 @@ export const DEMO_PROFILES: Profile[] = [
     id: '77777777-7777-4777-8777-777777777771',
     full_name: 'يوسف حسن رمزي',
     phone: '+201200000005',
-    email: 'admin.youssef@aqarexit.internal',
+    email: 'admin@aqarswap.com',
     created_at: '2025-10-01T08:00:00Z',
     updated_at: '2026-01-01T08:00:00Z',
   },
