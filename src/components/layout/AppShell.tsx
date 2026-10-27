@@ -66,7 +66,8 @@ export function AppShell({
     ],
     admin: [
       { label: 'لوحة التحكم المركزية', href: '/control-room', icon: LayoutDashboard },
-      { label: 'إدارة الحالات والطلبات', href: '/control-room/cases', icon: FolderOpen },
+      { label: 'طلبات البيع والشراء', href: '/control-room/requests', icon: ArrowRightLeft },
+      { label: 'إدارة الحالات والملفات', href: '/control-room/cases', icon: FolderOpen },
       { label: 'إدارة المستخدمين والصلاحيات', href: '/control-room/users', icon: Users },
       { label: 'متابعة الصفقات', href: '/control-room/deals', icon: Handshake },
       { label: 'سجل التدقيق المالي والقانوني', href: '/control-room/audit-logs', icon: History },

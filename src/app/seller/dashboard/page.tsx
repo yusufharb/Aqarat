@@ -33,7 +33,10 @@ export default async function SellerDashboardPage() {
 
   const repo = getDataRepository();
   const sellerId = session.userId;
-  const cases = await repo.getCasesBySeller(sellerId);
+  const [cases, sellerRequests] = await Promise.all([
+    repo.getCasesBySeller(sellerId),
+    repo.getSellerRequestsByUserId(sellerId),
+  ]);
 
   // Compute status counts
   const totalCount = cases.length;
@@ -113,6 +116,71 @@ export default async function SellerDashboardPage() {
             badgeText="مجاناً"
             icon={<ShieldCheck className="w-5 h-5 text-emerald-200" />}
           />
+        )}
+
+        {/* Submitted Acquisition Requests (/sell) */}
+        {sellerRequests.length > 0 && (
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-surface-200 shadow-2xs">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-surface-100">
+              <div>
+                <h3 className="text-base font-black text-surface-900">طلبات البيع والتنازل المبدئية (/sell)</h3>
+                <p className="text-xs text-surface-500">متابعة الطلبات المقدمة عبر نموذج البيع قبل تحويلها إلى ملفات دراسة</p>
+              </div>
+              <Link
+                href="/sell"
+                className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-800 text-xs font-bold rounded-xl transition-colors"
+              >
+                + تقديم طلب بيع جديد
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-surface-50 text-surface-600 font-bold border-b border-surface-200">
+                  <tr>
+                    <th className="py-2.5 px-3">الرقم المرجعي</th>
+                    <th className="py-2.5 px-3">الوحدة والمشروع</th>
+                    <th className="py-2.5 px-3">المدفوع / الكاش المطلوب</th>
+                    <th className="py-2.5 px-3">تاريخ التقديم</th>
+                    <th className="py-2.5 px-3">حالة الطلب</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100">
+                  {sellerRequests.map((req) => (
+                    <tr key={req.id}>
+                      <td className="py-3 px-3 font-mono font-bold text-brand-700">{req.reference_code}</td>
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-surface-900">{req.project_name}</div>
+                        <div className="text-[11px] text-surface-500">{req.developer_name} • {req.city_district}</div>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-bold">
+                        {formatEGP(req.requested_cash_amount || req.paid_amount)}
+                      </td>
+                      <td className="py-3 px-3 text-surface-600">{formatDate(req.created_at)}</td>
+                      <td className="py-3 px-3">
+                        <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-100 text-surface-800">
+                          {req.status === 'pending'
+                            ? 'بانتظار المراجعة'
+                            : req.status === 'under_review'
+                            ? 'قيد الفحص'
+                            : req.status === 'qualified'
+                            ? 'مؤهل للتنازل'
+                            : req.status === 'converted_to_case'
+                            ? 'تم التحويل لملف دراسة'
+                            : req.status === 'rejected'
+                            ? 'مرفوض'
+                            : req.status}
+                        </span>
+                        {req.rejection_reason && (
+                          <span className="block text-[10px] text-red-600 mt-1 max-w-xs">{req.rejection_reason}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
 
         {/* Cases Section */}

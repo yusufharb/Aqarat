@@ -19,6 +19,15 @@ import type {
   RoleRequest,
   AuditLogEntry,
   VerificationStatus,
+  SellerRequest,
+  SellerRequestStatus,
+  BuyerRequest,
+  BuyerRequestStatus,
+  BuyerMatchedListing,
+} from '../types';
+import {
+  ALLOWED_SELLER_REQUEST_TRANSITIONS,
+  ALLOWED_BUYER_REQUEST_TRANSITIONS,
 } from '../types';
 import {
   DEMO_PROFILES,
@@ -39,7 +48,11 @@ import {
   DEMO_AUDIT_LOGS,
   DEMO_GOVERNORATES,
   DEMO_DEVELOPERS,
+  DEMO_SELLER_REQUESTS,
+  DEMO_BUYER_REQUESTS,
 } from './demo-data';
+import { matchBuyerRequestWithListings } from '../matching/smart-matcher';
+import { generateReferenceCode, generateCaseNumber } from '../utils';
 
 export class DemoRepository implements DataRepository {
   private profiles: Profile[];
@@ -60,6 +73,8 @@ export class DemoRepository implements DataRepository {
   private auditLogs: AuditLogEntry[];
   private governorates: string[];
   private developers: string[];
+  private sellerRequests: SellerRequest[];
+  private buyerRequests: BuyerRequest[];
 
   constructor() {
     this.profiles = [...DEMO_PROFILES];
@@ -80,6 +95,8 @@ export class DemoRepository implements DataRepository {
     this.auditLogs = [...DEMO_AUDIT_LOGS];
     this.governorates = [...DEMO_GOVERNORATES];
     this.developers = [...DEMO_DEVELOPERS];
+    this.sellerRequests = [...DEMO_SELLER_REQUESTS];
+    this.buyerRequests = [...DEMO_BUYER_REQUESTS];
   }
 
   async getPublicListings(filter?: ListingsFilter): Promise<PublicListing[]> {
@@ -676,5 +693,389 @@ export class DemoRepository implements DataRepository {
 
   async getDevelopers(): Promise<string[]> {
     return [...this.developers];
+  }
+
+  // ============================================================================
+  // Seller Requests (/sell)
+  // ============================================================================
+
+  async getSellerRequests(filter?: { status?: SellerRequestStatus; search?: string }): Promise<SellerRequest[]> {
+    let result = [...this.sellerRequests];
+    if (filter?.status) {
+      result = result.filter((r) => r.status === filter.status);
+    }
+    if (filter?.search) {
+      const q = filter.search.toLowerCase().trim();
+      result = result.filter(
+        (r) =>
+          r.reference_code.toLowerCase().includes(q) ||
+          r.full_name.toLowerCase().includes(q) ||
+          r.phone.includes(q) ||
+          r.project_name.toLowerCase().includes(q) ||
+          r.developer_name.toLowerCase().includes(q)
+      );
+    }
+    return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  async getSellerRequestById(id: string): Promise<SellerRequest | null> {
+    const item = this.sellerRequests.find((r) => r.id === id);
+    return item ? { ...item } : null;
+  }
+
+  async getSellerRequestByReference(referenceCode: string): Promise<SellerRequest | null> {
+    const item = this.sellerRequests.find(
+      (r) => r.reference_code.toUpperCase() === referenceCode.toUpperCase().trim()
+    );
+    return item ? { ...item } : null;
+  }
+
+  async getSellerRequestsByUserId(userId: string): Promise<SellerRequest[]> {
+    return this.sellerRequests
+      .filter((r) => r.seller_id === userId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  async createSellerRequest(
+    data: Omit<SellerRequest, 'id' | 'reference_code' | 'created_at' | 'updated_at' | 'status'> & {
+      status?: SellerRequestStatus;
+    }
+  ): Promise<SellerRequest> {
+    const now = new Date().toISOString();
+    const newReq: SellerRequest = {
+      ...data,
+      id: crypto.randomUUID(),
+      reference_code: generateReferenceCode('REQ-S'),
+      status: data.status || 'pending',
+      created_at: now,
+      updated_at: now,
+    };
+    this.sellerRequests.unshift(newReq);
+    await this.logAuditEvent({
+      entity_name: 'seller_requests',
+      entity_id: newReq.id,
+      action: 'SELLER_REQUEST_CREATED',
+      actor_id: newReq.seller_id || null,
+      old_values: null,
+      new_values: { reference_code: newReq.reference_code, total_price: newReq.total_price },
+      ip_address: null,
+    });
+    return { ...newReq };
+  }
+
+  async updateSellerRequestStatus(
+    id: string,
+    status: SellerRequestStatus,
+    adminNotes?: string,
+    rejectionReason?: string,
+    reviewerId?: string
+  ): Promise<SellerRequest> {
+    const req = this.sellerRequests.find((r) => r.id === id);
+    if (!req) {
+      throw new Error(`طلب البائع بالمعرّف ${id} غير موجود.`);
+    }
+
+    const allowed = ALLOWED_SELLER_REQUEST_TRANSITIONS[req.status];
+    if (status !== req.status && (!allowed || !allowed.includes(status))) {
+      throw new Error(`انتقال غير مسموح به لحالة طلب البائع من "${req.status}" إلى "${status}".`);
+    }
+
+    if (status === 'rejected' && (!rejectionReason || !rejectionReason.trim())) {
+      throw new Error('سبب الرفض إلزامي عند رفض الطلب.');
+    }
+
+    const oldStatus = req.status;
+    req.status = status;
+    if (adminNotes !== undefined) req.admin_notes = adminNotes;
+    if (rejectionReason !== undefined) req.rejection_reason = rejectionReason;
+    if (reviewerId) req.reviewed_by = reviewerId;
+    req.reviewed_at = new Date().toISOString();
+    req.updated_at = new Date().toISOString();
+
+    await this.logAuditEvent({
+      entity_name: 'seller_requests',
+      entity_id: req.id,
+      action: `SELLER_REQUEST_STATUS_${status.toUpperCase()}`,
+      actor_id: reviewerId || null,
+      old_values: { status: oldStatus },
+      new_values: { status, rejection_reason: rejectionReason, admin_notes: adminNotes },
+      ip_address: null,
+    });
+
+    return { ...req };
+  }
+
+  async convertSellerRequestToCase(
+    requestId: string,
+    reviewerId?: string
+  ): Promise<{ request: SellerRequest; caseId: string }> {
+    const req = this.sellerRequests.find((r) => r.id === requestId);
+    if (!req) {
+      throw new Error(`طلب البائع بالمعرّف ${requestId} غير موجود.`);
+    }
+
+    if (req.converted_case_id) {
+      throw new Error(
+        `الطلب تم تحويله بالفعل إلى ملف دراسة سابق (${req.converted_case_id}) ولا يمكن إنشاء ملف مكرر.`
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    // 1. Create Property
+    const propId = crypto.randomUUID();
+    const newProperty: Property = {
+      id: propId,
+      governorate: req.governorate,
+      city_district: req.city_district,
+      developer_name: req.developer_name,
+      project_name: req.project_name,
+      unit_type: req.unit_type,
+      area_sqm: req.area_sqm || null,
+      floor_number: req.floor_number || null,
+      delivery_status: req.delivery_status || 'under_construction',
+      expected_delivery_date: null,
+    };
+    this.properties.unshift(newProperty);
+
+    // 2. Create Contract
+    const contractId = crypto.randomUUID();
+    const deposit = Math.round(req.paid_amount * 0.2);
+    const newContract: Contract = {
+      id: contractId,
+      property_id: propId,
+      total_contract_price: req.total_price,
+      deposit_paid: deposit,
+      installments_paid: Math.max(0, req.paid_amount - deposit),
+      remaining_balance: req.remaining_balance,
+      installment_value: req.installment_value || null,
+      installment_frequency: req.installment_frequency || 'quarterly',
+      maintenance_fee: null,
+      contract_date: null,
+    };
+    this.contracts.unshift(newContract);
+
+    // 3. Create AssignmentCase
+    const caseId = crypto.randomUUID();
+    const newCase: AssignmentCase = {
+      id: caseId,
+      case_number: generateCaseNumber(),
+      seller_id: req.seller_id || '11111111-1111-4111-8111-111111111111',
+      property_id: propId,
+      contract_id: contractId,
+      case_nature: 'standard_assignment',
+      status: 'screening',
+      is_private_listing: false,
+      requested_cash_amount: {
+        amount: req.requested_cash_amount || req.paid_amount,
+        confidence: 'seller_declared',
+        source_description: `تم إنشاؤه عبر تحويل طلب البائع (${req.reference_code})`,
+        verified_at: null,
+        verified_by: null,
+      },
+      seller_notes: req.notes || null,
+      submitted_at: now,
+      published_at: null,
+      created_at: now,
+      updated_at: now,
+    };
+    this.cases.unshift(newCase);
+
+    // Link back to request
+    req.converted_case_id = caseId;
+    req.status = 'converted_to_case';
+    req.reviewed_by = reviewerId || req.reviewed_by || null;
+    req.reviewed_at = now;
+    req.updated_at = now;
+
+    await this.logAuditEvent({
+      entity_name: 'seller_requests',
+      entity_id: req.id,
+      action: 'SELLER_REQUEST_CONVERTED_TO_CASE',
+      actor_id: reviewerId || null,
+      old_values: { status: 'qualified' },
+      new_values: { status: 'converted_to_case', converted_case_id: caseId, case_number: newCase.case_number },
+      ip_address: null,
+    });
+
+    return { request: { ...req }, caseId };
+  }
+
+  // ============================================================================
+  // Buyer Requests (/buy)
+  // ============================================================================
+
+  async getBuyerRequests(filter?: { status?: BuyerRequestStatus; search?: string }): Promise<BuyerRequest[]> {
+    let result = [...this.buyerRequests];
+    if (filter?.status) {
+      result = result.filter((r) => r.status === filter.status);
+    }
+    if (filter?.search) {
+      const q = filter.search.toLowerCase().trim();
+      result = result.filter(
+        (r) =>
+          r.reference_code.toLowerCase().includes(q) ||
+          r.full_name.toLowerCase().includes(q) ||
+          r.phone.includes(q) ||
+          r.preferred_governorates.some((g) => g.toLowerCase().includes(q)) ||
+          r.preferred_districts.some((d) => d.toLowerCase().includes(q))
+      );
+    }
+    return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  async getBuyerRequestById(id: string): Promise<BuyerRequest | null> {
+    const item = this.buyerRequests.find((r) => r.id === id);
+    return item ? { ...item } : null;
+  }
+
+  async getBuyerRequestByReference(referenceCode: string): Promise<BuyerRequest | null> {
+    const item = this.buyerRequests.find(
+      (r) => r.reference_code.toUpperCase() === referenceCode.toUpperCase().trim()
+    );
+    return item ? { ...item } : null;
+  }
+
+  async getBuyerRequestsByUserId(userId: string): Promise<BuyerRequest[]> {
+    return this.buyerRequests
+      .filter((r) => r.buyer_id === userId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  async createBuyerRequest(
+    data: Omit<BuyerRequest, 'id' | 'reference_code' | 'created_at' | 'updated_at' | 'status'> & {
+      status?: BuyerRequestStatus;
+    }
+  ): Promise<BuyerRequest> {
+    const now = new Date().toISOString();
+    const newReq: BuyerRequest = {
+      ...data,
+      id: crypto.randomUUID(),
+      reference_code: generateReferenceCode('REQ-B'),
+      status: data.status || 'pending',
+      created_at: now,
+      updated_at: now,
+    };
+    this.buyerRequests.unshift(newReq);
+    await this.logAuditEvent({
+      entity_name: 'buyer_requests',
+      entity_id: newReq.id,
+      action: 'BUYER_REQUEST_CREATED',
+      actor_id: newReq.buyer_id || null,
+      old_values: null,
+      new_values: { reference_code: newReq.reference_code, budget_cash: newReq.budget_cash },
+      ip_address: null,
+    });
+    return { ...newReq };
+  }
+
+  async updateBuyerRequestStatus(
+    id: string,
+    status: BuyerRequestStatus,
+    adminNotes?: string,
+    rejectionReason?: string,
+    reviewerId?: string
+  ): Promise<BuyerRequest> {
+    const req = this.buyerRequests.find((r) => r.id === id);
+    if (!req) {
+      throw new Error(`طلب المشتري بالمعرّف ${id} غير موجود.`);
+    }
+
+    const allowed = ALLOWED_BUYER_REQUEST_TRANSITIONS[req.status];
+    if (status !== req.status && (!allowed || !allowed.includes(status))) {
+      throw new Error(`انتقال غير مسموح به لحالة طلب المشتري من "${req.status}" إلى "${status}".`);
+    }
+
+    if (status === 'rejected' && (!rejectionReason || !rejectionReason.trim())) {
+      throw new Error('سبب الرفض إلزامي عند رفض الطلب.');
+    }
+
+    const oldStatus = req.status;
+    req.status = status;
+    if (adminNotes !== undefined) req.admin_notes = adminNotes;
+    if (rejectionReason !== undefined) req.rejection_reason = rejectionReason;
+    if (reviewerId) req.reviewed_by = reviewerId;
+    req.reviewed_at = new Date().toISOString();
+    req.updated_at = new Date().toISOString();
+
+    await this.logAuditEvent({
+      entity_name: 'buyer_requests',
+      entity_id: req.id,
+      action: `BUYER_REQUEST_STATUS_${status.toUpperCase()}`,
+      actor_id: reviewerId || null,
+      old_values: { status: oldStatus },
+      new_values: { status, rejection_reason: rejectionReason, admin_notes: adminNotes },
+      ip_address: null,
+    });
+
+    return { ...req };
+  }
+
+  async convertBuyerRequestToDeal(
+    requestId: string,
+    targetCaseId: string,
+    reviewerId?: string
+  ): Promise<{ request: BuyerRequest; dealId: string }> {
+    const req = this.buyerRequests.find((r) => r.id === requestId);
+    if (!req) {
+      throw new Error(`طلب المشتري بالمعرّف ${requestId} غير موجود.`);
+    }
+
+    if (req.converted_deal_id) {
+      throw new Error(`الطلب تم تحويله بالفعل إلى صفقة سابقة (${req.converted_deal_id}).`);
+    }
+
+    const targetCase = this.cases.find((c) => c.id === targetCaseId);
+    if (!targetCase) {
+      throw new Error(`ملف الوحدة بالمعرّف ${targetCaseId} غير موجود.`);
+    }
+
+    const buyerId = req.buyer_id || '22222222-2222-4222-8222-222222222221';
+
+    // Create Lead
+    const lead = await this.createLead({
+      case_id: targetCaseId,
+      buyer_id: buyerId,
+      buyer_message: req.notes || `طلب شراء متطابق (${req.reference_code})`,
+      budget_cash: req.budget_cash,
+      comfortable_installment: req.max_installment,
+    });
+
+    // Create Deal
+    const deal = await this.createDeal({
+      case_id: targetCaseId,
+      lead_id: lead.id,
+      seller_id: targetCase.seller_id,
+      buyer_id: buyerId,
+      status: 'buyer_qualified',
+      agreed_cash_amount: req.budget_cash,
+      notes: `تم إنشاء الصفقة بناءً على طلب الشراء (${req.reference_code}) ومطابقته للوحدة (${targetCase.case_number})`,
+    });
+
+    const now = new Date().toISOString();
+    req.converted_deal_id = deal.id;
+    req.status = 'converted_to_deal';
+    req.reviewed_by = reviewerId || req.reviewed_by || null;
+    req.reviewed_at = now;
+    req.updated_at = now;
+
+    await this.logAuditEvent({
+      entity_name: 'buyer_requests',
+      entity_id: req.id,
+      action: 'BUYER_REQUEST_CONVERTED_TO_DEAL',
+      actor_id: reviewerId || null,
+      old_values: { status: 'matching' },
+      new_values: { status: 'converted_to_deal', converted_deal_id: deal.id, target_case_id: targetCaseId },
+      ip_address: null,
+    });
+
+    return { request: { ...req }, dealId: deal.id };
+  }
+
+  async matchListingsForBuyerRequest(requestId: string): Promise<BuyerMatchedListing[]> {
+    const req = await this.getBuyerRequestById(requestId);
+    if (!req) return [];
+    const listings = await this.getPublicListings();
+    return matchBuyerRequestWithListings(req, listings);
   }
 }

@@ -308,3 +308,129 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
   closed: [],
   rejected: [],
 };
+
+// ============================================================================
+// Acquisition Requests Enums and Interfaces (/sell & /buy)
+// ============================================================================
+
+export type SellerRequestStatus =
+  | 'pending'
+  | 'under_review'
+  | 'needs_information'
+  | 'qualified'
+  | 'rejected'
+  | 'converted_to_case'
+  | 'closed';
+
+export type BuyerRequestStatus =
+  | 'pending'
+  | 'under_review'
+  | 'needs_information'
+  | 'qualified'
+  | 'matching'
+  | 'contacted'
+  | 'converted_to_deal'
+  | 'rejected'
+  | 'closed';
+
+export const ALLOWED_SELLER_REQUEST_TRANSITIONS: Record<SellerRequestStatus, SellerRequestStatus[]> = {
+  pending: ['under_review', 'rejected', 'closed'],
+  under_review: ['needs_information', 'qualified', 'rejected', 'closed'],
+  needs_information: ['under_review', 'rejected', 'closed'],
+  qualified: ['converted_to_case', 'rejected', 'closed'],
+  converted_to_case: ['closed'],
+  rejected: ['under_review'],
+  closed: [],
+};
+
+export const ALLOWED_BUYER_REQUEST_TRANSITIONS: Record<BuyerRequestStatus, BuyerRequestStatus[]> = {
+  pending: ['under_review', 'rejected', 'closed'],
+  under_review: ['needs_information', 'qualified', 'rejected', 'closed'],
+  needs_information: ['under_review', 'rejected', 'closed'],
+  qualified: ['matching', 'contacted', 'converted_to_deal', 'rejected', 'closed'],
+  matching: ['contacted', 'converted_to_deal', 'rejected', 'closed'],
+  contacted: ['matching', 'converted_to_deal', 'rejected', 'closed'],
+  converted_to_deal: ['closed'],
+  rejected: ['under_review'],
+  closed: [],
+};
+
+export interface SellerRequest {
+  id: string;
+  reference_code: string;
+  seller_id?: string | null;
+  full_name: string;
+  phone: string;
+  email?: string | null;
+  governorate: string;
+  city_district: string;
+  developer_name: string;
+  project_name: string;
+  unit_type: UnitType;
+  area_sqm?: number | null;
+  floor_number?: number | null;
+  delivery_status?: DeliveryStatus;
+  total_price: number;
+  paid_amount: number;
+  remaining_balance: number;
+  installment_value?: number | null;
+  installment_frequency?: InstallmentFrequency | null;
+  has_overdue: boolean;
+  overdue_amount?: number | null;
+  requested_cash_amount?: number | null;
+  notes?: string | null;
+  status: SellerRequestStatus;
+  admin_notes?: string | null;
+  rejection_reason?: string | null;
+  converted_case_id?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BuyerRequest {
+  id: string;
+  reference_code: string;
+  buyer_id?: string | null;
+  full_name: string;
+  phone: string;
+  email?: string | null;
+  budget_cash: number;
+  max_installment: number;
+  installment_frequency?: InstallmentFrequency | null;
+  is_budget_flexible: boolean;
+  preferred_governorates: string[];
+  preferred_districts: string[];
+  preferred_unit_types: UnitType[];
+  preferred_developers: string[];
+  delivery_preference: 'immediate' | 'within_1_year' | 'within_2_years' | 'any';
+  bedrooms?: string | null;
+  notes?: string | null;
+  status: BuyerRequestStatus;
+  admin_notes?: string | null;
+  rejection_reason?: string | null;
+  converted_deal_id?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListingMatchCriteria {
+  cashMatches: boolean;
+  installmentMatches: boolean;
+  locationMatches: boolean;
+  typeMatches: boolean;
+  developerMatches: boolean;
+  deliveryMatches: boolean;
+  score: number; // 0 - 100
+  matchType: 'exact' | 'partial' | 'none';
+  explanations: string[];
+}
+
+export interface BuyerMatchedListing {
+  listing: PublicListing;
+  match: ListingMatchCriteria;
+}
+

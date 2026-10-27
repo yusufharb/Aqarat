@@ -26,6 +26,16 @@ export function Footer() {
             <h4 className="text-white text-base font-bold mb-4">روابط سريعة</h4>
             <ul className="space-y-2.5 text-sm">
               <li>
+                <Link href="/sell" className="hover:text-brand-400 transition-colors">
+                  بيع وحدتك (طلب تنازل)
+                </Link>
+              </li>
+              <li>
+                <Link href="/buy" className="hover:text-brand-400 transition-colors">
+                  اشتري وحدة (تسجيل رغبة شراء)
+                </Link>
+              </li>
+              <li>
                 <Link href="/units" className="hover:text-brand-400 transition-colors">
                   تصفح الوحدات المعتمدة
                 </Link>
@@ -43,11 +53,6 @@ export function Footer() {
               <li>
                 <Link href="/faq" className="hover:text-brand-400 transition-colors">
                   الأسئلة الشائعة
-                </Link>
-              </li>
-              <li>
-                <Link href="/seller/new-case" className="hover:text-brand-400 transition-colors">
-                  طلب تنازل جديد (للبائع)
                 </Link>
               </li>
             </ul>

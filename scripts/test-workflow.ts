@@ -436,6 +436,191 @@ async function runTestSuite() {
   );
   assert(Boolean(foundLog), 'Audit log entry persisted and retrievable in audit trail');
 
+  // ---------------------------------------------------------------------------
+  // Test Group 10: Seller Acquisition Workflow (/sell)
+  // ---------------------------------------------------------------------------
+  console.log('\n--- 10. Testing Seller Acquisition Workflow (/sell) ---');
+
+  // Test 10.1: Create seller request
+  const sellerReq = await repo.createSellerRequest({
+    seller_id: testSellerId,
+    full_name: 'طارق حسام النجار',
+    phone: '+201099112233',
+    email: 'tarek@example.com',
+    governorate: 'القاهرة',
+    city_district: 'التجمع الخامس',
+    developer_name: 'Palm Hills Developments',
+    project_name: 'Palm Hills New Cairo',
+    unit_type: 'apartment',
+    area_sqm: 175,
+    floor_number: 2,
+    delivery_status: 'under_construction',
+    total_price: 7500000,
+    paid_amount: 2500000,
+    remaining_balance: 5000000,
+    installment_value: 150000,
+    installment_frequency: 'quarterly',
+    has_overdue: false,
+    overdue_amount: 0,
+    requested_cash_amount: 2500000,
+    notes: 'تنازل بسعر التعاقد القديم بدون أي زيادة.',
+  });
+
+  assert(Boolean(sellerReq.id), 'Seller request successfully persisted with UUID');
+  assert(
+    /^REQ-S-\d{4}-\d{4}$/.test(sellerReq.reference_code),
+    `Seller reference code matches format REQ-S-YYYY-XXXX: ${sellerReq.reference_code}`
+  );
+  assert(sellerReq.status === 'pending', 'Initial status of seller request is pending');
+
+  // Test 10.2: Valid transition: pending -> under_review -> qualified
+  const reviewedSellerReq = await repo.updateSellerRequestStatus(
+    sellerReq.id,
+    'under_review',
+    'بدء الفحص ومراجعة بيانات المطور'
+  );
+  assert(reviewedSellerReq.status === 'under_review', 'Seller request transitioned to under_review');
+
+  const qualifiedSellerReq = await repo.updateSellerRequestStatus(
+    sellerReq.id,
+    'qualified',
+    'البيانات صحيحة ومؤهل للتنازل'
+  );
+  assert(qualifiedSellerReq.status === 'qualified', 'Seller request transitioned to qualified');
+
+  // Test 10.3: Invalid transition blocked (qualified -> pending is not allowed)
+  let invalidTransitionBlocked = false;
+  try {
+    await repo.updateSellerRequestStatus(sellerReq.id, 'pending' as any);
+  } catch {
+    invalidTransitionBlocked = true;
+  }
+  assert(invalidTransitionBlocked, 'Invalid seller status transition (qualified -> pending) is blocked');
+
+  // Test 10.4: Mandatory rejection reason enforcement
+  let rejectionWithoutReasonBlocked = false;
+  try {
+    await repo.updateSellerRequestStatus(sellerReq.id, 'rejected', '', '   ');
+  } catch {
+    rejectionWithoutReasonBlocked = true;
+  }
+  assert(rejectionWithoutReasonBlocked, 'Rejection without reason is strictly rejected by validation');
+
+  // Test 10.5: Convert qualified seller request to case
+  const { request: convertedReq, caseId: createdCaseId } = await repo.convertSellerRequestToCase(
+    sellerReq.id,
+    'reviewer-admin-id'
+  );
+  assert(convertedReq.status === 'converted_to_case', 'Seller request status updated to converted_to_case');
+  assert(convertedReq.converted_case_id === createdCaseId, 'Seller request linked to newly created case ID');
+
+  const generatedCase = await repo.getCaseById(createdCaseId);
+  assert(Boolean(generatedCase), 'Case record created in repository');
+  assert(generatedCase?.status === 'screening', 'Newly converted case starts in screening status');
+  assert(
+    generatedCase?.requested_cash_amount?.amount === 2500000,
+    'Requested cash amount accurately mapped from seller request'
+  );
+
+  // Test 10.6: Prevent duplicate case conversion
+  let duplicateConversionBlocked = false;
+  try {
+    await repo.convertSellerRequestToCase(sellerReq.id);
+  } catch {
+    duplicateConversionBlocked = true;
+  }
+  assert(duplicateConversionBlocked, 'Prevent duplicate case conversion on already converted seller request');
+
+  // ---------------------------------------------------------------------------
+  // Test Group 11: Buyer Acquisition Workflow (/buy)
+  // ---------------------------------------------------------------------------
+  console.log('\n--- 11. Testing Buyer Acquisition Workflow (/buy) ---');
+
+  // Test 11.1: Create buyer request
+  const buyerReq = await repo.createBuyerRequest({
+    buyer_id: testBuyerId,
+    full_name: 'ماجد عبد الحميد',
+    phone: '+201122334455',
+    email: 'maged@example.com',
+    budget_cash: 2600000,
+    max_installment: 160000,
+    installment_frequency: 'quarterly',
+    is_budget_flexible: true,
+    preferred_governorates: ['القاهرة'],
+    preferred_districts: ['التجمع الخامس'],
+    preferred_unit_types: ['apartment'],
+    preferred_developers: ['Palm Hills Developments'],
+    delivery_preference: 'any',
+    bedrooms: '3',
+    notes: 'جاهز للسداد الفوري فور مطابقة الوحدة المناسبة.',
+  });
+
+  assert(Boolean(buyerReq.id), 'Buyer request created with unique ID');
+  assert(
+    /^REQ-B-\d{4}-\d{4}$/.test(buyerReq.reference_code),
+    `Buyer reference code matches format REQ-B-YYYY-XXXX: ${buyerReq.reference_code}`
+  );
+  assert(buyerReq.status === 'pending', 'Buyer request initial status is pending');
+
+  // Test 11.2: Status transitions
+  const reviewedBuyerReq = await repo.updateBuyerRequestStatus(buyerReq.id, 'under_review');
+  assert(reviewedBuyerReq.status === 'under_review', 'Buyer request transitioned to under_review');
+
+  const matchingBuyerReq = await repo.updateBuyerRequestStatus(buyerReq.id, 'qualified');
+  assert(matchingBuyerReq.status === 'qualified', 'Buyer request transitioned to qualified');
+
+  // Test 11.3: Convert buyer request to deal
+  const existingPublishedCases = await repo.getAllCases();
+  const targetCaseForDeal = existingPublishedCases.find((c) => c.status === 'published') || existingPublishedCases[0];
+
+  const { request: convertedBuyerReq, dealId: createdDealId } = await repo.convertBuyerRequestToDeal(
+    buyerReq.id,
+    targetCaseForDeal.id,
+    'admin-actor-id'
+  );
+  assert(convertedBuyerReq.status === 'converted_to_deal', 'Buyer request status marked converted_to_deal');
+  assert(convertedBuyerReq.converted_deal_id === createdDealId, 'Buyer request linked to created deal ID');
+
+  const allDeals = await repo.getAllDeals();
+  const dealRecord = allDeals.find((d) => d.id === createdDealId);
+  assert(Boolean(dealRecord), 'Deal record successfully registered in deals pipeline');
+
+  // ---------------------------------------------------------------------------
+  // Test Group 12: Smart Matching Engine Verification
+  // ---------------------------------------------------------------------------
+  console.log('\n--- 12. Testing Deterministic Smart Matching Engine ---');
+
+  const { normalizeToMonthly, evaluateListingMatch, matchBuyerRequestWithListings } = await import(
+    '../src/lib/matching/smart-matcher'
+  );
+
+  // Test 12.1: Frequency normalization
+  const monthly120kQuarterly = normalizeToMonthly(120000, 'quarterly');
+  assert(monthly120kQuarterly === 40000, 'Quarterly 120,000 normalizes to monthly 40,000');
+
+  const monthly60kSemi = normalizeToMonthly(60000, 'semi_annual');
+  assert(monthly60kSemi === 10000, 'Semi-annual 60,000 normalizes to monthly 10,000');
+
+  const monthly240kAnnual = normalizeToMonthly(240000, 'annual');
+  assert(monthly240kAnnual === 20000, 'Annual 240,000 normalizes to monthly 20,000');
+
+  // Test 12.2: Evaluate match between request and published listing
+  const allPublishedListings = await repo.getPublicListings();
+  const sampleListing = allPublishedListings[0];
+  if (sampleListing) {
+    const matchEvaluation = evaluateListingMatch(buyerReq, sampleListing);
+    assert(typeof matchEvaluation.score === 'number' && matchEvaluation.score >= 0, 'Match score computed deterministically');
+    assert(
+      ['exact', 'partial', 'none'].includes(matchEvaluation.matchType),
+      `Match type categorized as ${matchEvaluation.matchType}`
+    );
+    assert(Array.isArray(matchEvaluation.explanations) && matchEvaluation.explanations.length > 0, 'Explanations contain human-readable points');
+  }
+
+  // Test 12.3: Match buyer request against all published listings
+  const matches = await repo.matchListingsForBuyerRequest(buyerReq.id);
+  assert(Array.isArray(matches), 'matchListingsForBuyerRequest returns an array of matched listings');
+
   // Summary
   console.log('\n======================================================');
   console.log(`📊 Test Summary: Total: ${totalTests} | Passed: ${passedTests} | Failed: ${failedTests}`);

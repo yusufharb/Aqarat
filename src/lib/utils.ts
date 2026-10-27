@@ -92,6 +92,15 @@ export function generateCaseNumber(): string {
   return `CAS-${year}-${randomSuffix}`;
 }
 
+/**
+ * Generates an acquisition request reference code formatted as "REQ-S-YYYY-XXXX" or "REQ-B-YYYY-XXXX".
+ */
+export function generateReferenceCode(prefix: 'REQ-S' | 'REQ-B'): string {
+  const year = new Date().getFullYear();
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  return `${prefix}-${year}-${randomSuffix}`;
+}
+
 export type ClassValue =
   | string
   | number

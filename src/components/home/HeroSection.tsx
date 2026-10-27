@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Building, MapPin, DollarSign, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Search, Building, MapPin, DollarSign, ShieldCheck, CheckCircle2, PlusCircle, Sparkles } from 'lucide-react';
 
 export function HeroSection() {
   const router = useRouter();
@@ -41,9 +41,27 @@ export function HeroSection() {
             منصة التنازل عن وحدات التقسيط العقاري{' '}
             <span className="text-brand-700">بدون أوفر</span>
           </h1>
-          <p className="text-sm sm:text-base text-surface-600 leading-relaxed max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-surface-600 leading-relaxed max-w-2xl mx-auto mb-6">
             البديل الآمن والمنظم لفسخ التعاقد وغرامات المطورين في مصر. نوفر للبائع فرصة استرداد مدفوعاته كاش، وللمشتري اقتناص وحدات بأسعار التعاقد القديمة مع استكمال جدول الأقساط بمقر المطور.
           </p>
+
+          {/* Prominent Dual CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/sell"
+              className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white font-black text-sm px-6 py-3.5 rounded-2xl shadow-sm transition-all hover:scale-[1.02]"
+            >
+              <PlusCircle className="w-5 h-5" />
+              <span>بيع وحدتك (طلب تنازل)</span>
+            </Link>
+            <Link
+              href="/buy"
+              className="inline-flex items-center gap-2 bg-white hover:bg-brand-50 text-brand-900 border-2 border-brand-700/30 font-black text-sm px-6 py-3.5 rounded-2xl shadow-xs transition-all hover:scale-[1.02]"
+            >
+              <Sparkles className="w-5 h-5 text-brand-700" />
+              <span>اشتري وحدة (سجل طلبك)</span>
+            </Link>
+          </div>
         </div>
 
         {/* Multi-segment Search Box (Inspired by Image 1 NUZEL) */}

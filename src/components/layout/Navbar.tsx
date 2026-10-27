@@ -70,13 +70,19 @@ export function Navbar() {
               </Link>
             </div>
 
-            {/* Primary CTA */}
+            {/* Dual Acquisition CTAs */}
             <Link
-              href="/seller/new-case"
-              className="inline-flex items-center gap-2 bg-brand-700 hover:bg-brand-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-colors shrink-0"
+              href="/buy"
+              className="inline-flex items-center gap-1.5 bg-brand-50 hover:bg-brand-100 text-brand-800 border border-brand-200 text-xs font-extrabold px-3.5 py-2.5 rounded-xl transition-colors shrink-0"
+            >
+              <span>اشتري وحدة</span>
+            </Link>
+            <Link
+              href="/sell"
+              className="inline-flex items-center gap-1.5 bg-brand-700 hover:bg-brand-800 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-xs transition-colors shrink-0"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>اعرض وحدتك للتنازل</span>
+              <span>بيع وحدتك</span>
             </Link>
           </div>
 
@@ -108,14 +114,23 @@ export function Navbar() {
           </div>
 
           <div className="pt-3 border-t border-surface-100 space-y-2">
-            <Link
-              href="/seller/new-case"
-              onClick={() => setMobileOpen(false)}
-              className="w-full inline-flex items-center justify-center gap-2 bg-brand-700 text-white text-xs font-bold py-3 rounded-xl shadow-xs"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>اعرض وحدتك للتخارج (مجاناً)</span>
-            </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/sell"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex items-center justify-center gap-1.5 bg-brand-700 text-white text-xs font-bold py-3 rounded-xl shadow-xs"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>بيع وحدتك</span>
+              </Link>
+              <Link
+                href="/buy"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex items-center justify-center gap-1.5 bg-brand-50 border border-brand-200 text-brand-800 text-xs font-bold py-3 rounded-xl shadow-xs"
+              >
+                <span>اشتري وحدة</span>
+              </Link>
+            </div>
 
             <div className="grid grid-cols-3 gap-1 pt-1 text-center text-[11px] font-bold">
               <Link

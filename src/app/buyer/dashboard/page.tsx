@@ -36,11 +36,12 @@ export default async function BuyerDashboardPage() {
   const repo = getDataRepository();
   const buyerId = session.userId;
 
-  const [savedListings, leads, deals, preferences] = await Promise.all([
+  const [savedListings, leads, deals, preferences, buyerRequests] = await Promise.all([
     repo.getBuyerSavedListings(buyerId),
     repo.getBuyerLeads(buyerId),
     repo.getBuyerDeals(buyerId),
     repo.getBuyerPreferences(buyerId),
+    repo.getBuyerRequestsByUserId(buyerId),
   ]);
 
   const dealsWithDetails = await Promise.all(
@@ -107,6 +108,80 @@ export default async function BuyerDashboardPage() {
           badgeText="حماية المشتري"
           icon={<ShieldCheck className="w-5 h-5 text-emerald-300" />}
         />
+
+        {/* Submitted Acquisition Requests (/buy) */}
+        {buyerRequests.length > 0 && (
+          <div id="requests" className="bg-white rounded-3xl p-5 sm:p-6 border border-surface-200 shadow-2xs">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-surface-100">
+              <div>
+                <h3 className="text-base font-black text-surface-900">طلبات الشراء والمطابقة الذكية (/buy)</h3>
+                <p className="text-xs text-surface-500">متابعة رغبات الشراء والميزانيات المسجلة ومطابقتها مع الوحدات المعتمدة</p>
+              </div>
+              <Link
+                href="/buy"
+                className="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-800 text-xs font-bold rounded-xl transition-colors"
+              >
+                + تسجيل طلب شراء جديد
+              </Link>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-surface-50 text-surface-600 font-bold border-b border-surface-200">
+                  <tr>
+                    <th className="py-2.5 px-3">الرقم المرجعي</th>
+                    <th className="py-2.5 px-3">الكاش الجاهز</th>
+                    <th className="py-2.5 px-3">أقصى قسط دوري</th>
+                    <th className="py-2.5 px-3">المناطق والأنواع</th>
+                    <th className="py-2.5 px-3">تاريخ الطلب</th>
+                    <th className="py-2.5 px-3">حالة المطابقة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-surface-100">
+                  {buyerRequests.map((req) => (
+                    <tr key={req.id}>
+                      <td className="py-3 px-3 font-mono font-bold text-brand-700">{req.reference_code}</td>
+                      <td className="py-3 px-3 font-mono font-bold text-emerald-700">
+                        {formatEGP(req.budget_cash)}
+                        {req.is_budget_flexible && <span className="block text-[10px] text-amber-700 font-sans">+ مرونة 15%</span>}
+                      </td>
+                      <td className="py-3 px-3 font-mono">
+                        {formatEGP(req.max_installment)} ({req.installment_frequency === 'monthly' ? 'شهري' : 'ربع سنوي'})
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-surface-800">{req.preferred_governorates.join('، ')}</div>
+                        <div className="text-[11px] text-surface-500">{req.preferred_unit_types.join(' • ')}</div>
+                      </td>
+                      <td className="py-3 px-3 text-surface-600">{formatDate(req.created_at)}</td>
+                      <td className="py-3 px-3">
+                        <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-100 text-surface-800">
+                          {req.status === 'pending'
+                            ? 'بانتظار المراجعة'
+                            : req.status === 'under_review'
+                            ? 'قيد الفحص'
+                            : req.status === 'qualified'
+                            ? 'مؤهل'
+                            : req.status === 'matching'
+                            ? 'جاري المطابقة'
+                            : req.status === 'contacted'
+                            ? 'تم التواصل'
+                            : req.status === 'converted_to_deal'
+                            ? 'تم التحويل لصفقة'
+                            : req.status === 'rejected'
+                            ? 'مرفوض'
+                            : req.status}
+                        </span>
+                        {req.rejection_reason && (
+                          <span className="block text-[10px] text-red-600 mt-1 max-w-xs">{req.rejection_reason}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Section 1: Active Deals */}
         <div id="deals" className="space-y-4">

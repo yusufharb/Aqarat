@@ -18,8 +18,17 @@ import {
   RoleRequest,
   AuditLogEntry,
   VerificationStatus,
+  SellerRequest,
+  SellerRequestStatus,
+  BuyerRequest,
+  BuyerRequestStatus,
+  BuyerMatchedListing,
+  ALLOWED_SELLER_REQUEST_TRANSITIONS,
+  ALLOWED_BUYER_REQUEST_TRANSITIONS,
 } from '../types';
 import { createServerSupabaseClient } from '../supabase/server';
+import { generateReferenceCode, generateCaseNumber } from '../utils';
+import { matchBuyerRequestWithListings } from '../matching/smart-matcher';
 
 export class SupabaseRepository implements DataRepository {
   async getPublicListings(filter?: ListingsFilter): Promise<PublicListing[]> {
@@ -653,5 +662,370 @@ export class SupabaseRepository implements DataRepository {
   async logAuditEvent(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<void> {
     const supabase = await createServerSupabaseClient();
     await supabase.from('audit_logs').insert(entry);
+  }
+
+  // ============================================================================
+  // Seller Requests (/sell)
+  // ============================================================================
+
+  async getSellerRequests(filter?: { status?: SellerRequestStatus; search?: string }): Promise<SellerRequest[]> {
+    const supabase = await createServerSupabaseClient();
+    let query = supabase.from('seller_requests').select('*').order('created_at', { ascending: false });
+
+    if (filter?.status) {
+      query = query.eq('status', filter.status);
+    }
+    if (filter?.search) {
+      const q = filter.search.trim();
+      query = query.or(
+        `reference_code.ilike.%${q}%,full_name.ilike.%${q}%,phone.ilike.%${q}%,project_name.ilike.%${q}%,developer_name.ilike.%${q}%`
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(`فشل جلب طلبات البائعين: ${error.message}`);
+    return (data || []) as SellerRequest[];
+  }
+
+  async getSellerRequestById(id: string): Promise<SellerRequest | null> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase.from('seller_requests').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(`فشل جلب طلب البائع: ${error.message}`);
+    return (data as SellerRequest) || null;
+  }
+
+  async getSellerRequestByReference(referenceCode: string): Promise<SellerRequest | null> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('seller_requests')
+      .select('*')
+      .eq('reference_code', referenceCode.trim().toUpperCase())
+      .maybeSingle();
+    if (error) throw new Error(`فشل جلب طلب البائع بالرقم المرجعي: ${error.message}`);
+    return (data as SellerRequest) || null;
+  }
+
+  async getSellerRequestsByUserId(userId: string): Promise<SellerRequest[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('seller_requests')
+      .select('*')
+      .eq('seller_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(`فشل جلب طلبات البائع: ${error.message}`);
+    return (data || []) as SellerRequest[];
+  }
+
+  async createSellerRequest(
+    data: Omit<SellerRequest, 'id' | 'reference_code' | 'created_at' | 'updated_at' | 'status'> & {
+      status?: SellerRequestStatus;
+    }
+  ): Promise<SellerRequest> {
+    const supabase = await createServerSupabaseClient();
+    const reference_code = generateReferenceCode('REQ-S');
+    const { data: inserted, error } = await supabase
+      .from('seller_requests')
+      .insert({
+        ...data,
+        reference_code,
+        status: data.status || 'pending',
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`فشل إنشاء طلب البيع: ${error.message}`);
+    return inserted as SellerRequest;
+  }
+
+  async updateSellerRequestStatus(
+    id: string,
+    status: SellerRequestStatus,
+    adminNotes?: string,
+    rejectionReason?: string,
+    reviewerId?: string
+  ): Promise<SellerRequest> {
+    const current = await this.getSellerRequestById(id);
+    if (!current) throw new Error(`طلب البائع غير موجود (${id})`);
+
+    const allowed = ALLOWED_SELLER_REQUEST_TRANSITIONS[current.status];
+    if (status !== current.status && (!allowed || !allowed.includes(status))) {
+      throw new Error(`انتقال غير مسموح به لحالة طلب البائع من "${current.status}" إلى "${status}".`);
+    }
+
+    if (status === 'rejected' && (!rejectionReason || !rejectionReason.trim())) {
+      throw new Error('سبب الرفض إلزامي عند رفض الطلب.');
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const updatePayload: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (adminNotes !== undefined) updatePayload.admin_notes = adminNotes;
+    if (rejectionReason !== undefined) updatePayload.rejection_reason = rejectionReason;
+    if (reviewerId) {
+      updatePayload.reviewed_by = reviewerId;
+      updatePayload.reviewed_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
+      .from('seller_requests')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`فشل تحديث حالة طلب البائع: ${error.message}`);
+    return data as SellerRequest;
+  }
+
+  async convertSellerRequestToCase(
+    requestId: string,
+    reviewerId?: string
+  ): Promise<{ request: SellerRequest; caseId: string }> {
+    const req = await this.getSellerRequestById(requestId);
+    if (!req) throw new Error(`طلب البائع غير موجود (${requestId})`);
+
+    if (req.converted_case_id) {
+      throw new Error(`الطلب تم تحويله بالفعل إلى ملف سابق (${req.converted_case_id})`);
+    }
+
+    // 1. Create Property
+    const property = await this.saveProperty({
+      governorate: req.governorate,
+      city_district: req.city_district,
+      developer_name: req.developer_name,
+      project_name: req.project_name,
+      unit_type: req.unit_type,
+      area_sqm: req.area_sqm || null,
+      floor_number: req.floor_number || null,
+      delivery_status: req.delivery_status || 'under_construction',
+      expected_delivery_date: null,
+    });
+
+    // 2. Create Contract
+    const deposit = Math.round(req.paid_amount * 0.2);
+    const contract = await this.saveContract({
+      property_id: property.id,
+      total_contract_price: req.total_price,
+      deposit_paid: deposit,
+      installments_paid: Math.max(0, req.paid_amount - deposit),
+      remaining_balance: req.remaining_balance,
+      installment_value: req.installment_value || null,
+      installment_frequency: req.installment_frequency || 'quarterly',
+      maintenance_fee: null,
+      contract_date: null,
+    });
+
+    // 3. Create Case
+    const sellerId = req.seller_id || (reviewerId || '00000000-0000-0000-0000-000000000000');
+    const newCase = await this.createCase(sellerId, {
+      case_number: generateCaseNumber(),
+      property_id: property.id,
+      contract_id: contract.id,
+      case_nature: 'standard_assignment',
+      status: 'screening',
+      requested_cash_amount: {
+        amount: req.requested_cash_amount || req.paid_amount,
+        confidence: 'seller_declared',
+        source_description: `تم إنشاؤه عبر تحويل طلب البائع (${req.reference_code})`,
+        verified_at: null,
+        verified_by: null,
+      },
+      seller_notes: req.notes || null,
+    });
+
+    // Link back to request
+    const supabase = await createServerSupabaseClient();
+    const { data: updatedReq, error } = await supabase
+      .from('seller_requests')
+      .update({
+        converted_case_id: newCase.id,
+        status: 'converted_to_case',
+        reviewed_by: reviewerId || req.reviewed_by || null,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`فشل ربط ملف الحالة بطلب البائع: ${error.message}`);
+    return { request: updatedReq as SellerRequest, caseId: newCase.id };
+  }
+
+  // ============================================================================
+  // Buyer Requests (/buy)
+  // ============================================================================
+
+  async getBuyerRequests(filter?: { status?: BuyerRequestStatus; search?: string }): Promise<BuyerRequest[]> {
+    const supabase = await createServerSupabaseClient();
+    let query = supabase.from('buyer_requests').select('*').order('created_at', { ascending: false });
+
+    if (filter?.status) {
+      query = query.eq('status', filter.status);
+    }
+    if (filter?.search) {
+      const q = filter.search.trim();
+      query = query.or(`reference_code.ilike.%${q}%,full_name.ilike.%${q}%,phone.ilike.%${q}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw new Error(`فشل جلب طلبات المشترين: ${error.message}`);
+    return (data || []) as BuyerRequest[];
+  }
+
+  async getBuyerRequestById(id: string): Promise<BuyerRequest | null> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase.from('buyer_requests').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(`فشل جلب طلب المشتري: ${error.message}`);
+    return (data as BuyerRequest) || null;
+  }
+
+  async getBuyerRequestByReference(referenceCode: string): Promise<BuyerRequest | null> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('buyer_requests')
+      .select('*')
+      .eq('reference_code', referenceCode.trim().toUpperCase())
+      .maybeSingle();
+    if (error) throw new Error(`فشل جلب طلب المشتري بالرقم المرجعي: ${error.message}`);
+    return (data as BuyerRequest) || null;
+  }
+
+  async getBuyerRequestsByUserId(userId: string): Promise<BuyerRequest[]> {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from('buyer_requests')
+      .select('*')
+      .eq('buyer_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(`فشل جلب طلبات المشتري: ${error.message}`);
+    return (data || []) as BuyerRequest[];
+  }
+
+  async createBuyerRequest(
+    data: Omit<BuyerRequest, 'id' | 'reference_code' | 'created_at' | 'updated_at' | 'status'> & {
+      status?: BuyerRequestStatus;
+    }
+  ): Promise<BuyerRequest> {
+    const supabase = await createServerSupabaseClient();
+    const reference_code = generateReferenceCode('REQ-B');
+    const { data: inserted, error } = await supabase
+      .from('buyer_requests')
+      .insert({
+        ...data,
+        reference_code,
+        status: data.status || 'pending',
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`فشل تسجيل طلب المشتري: ${error.message}`);
+    return inserted as BuyerRequest;
+  }
+
+  async updateBuyerRequestStatus(
+    id: string,
+    status: BuyerRequestStatus,
+    adminNotes?: string,
+    rejectionReason?: string,
+    reviewerId?: string
+  ): Promise<BuyerRequest> {
+    const current = await this.getBuyerRequestById(id);
+    if (!current) throw new Error(`طلب المشتري غير موجود (${id})`);
+
+    const allowed = ALLOWED_BUYER_REQUEST_TRANSITIONS[current.status];
+    if (status !== current.status && (!allowed || !allowed.includes(status))) {
+      throw new Error(`انتقال غير مسموح به لحالة طلب المشتري من "${current.status}" إلى "${status}".`);
+    }
+
+    if (status === 'rejected' && (!rejectionReason || !rejectionReason.trim())) {
+      throw new Error('سبب الرفض إلزامي عند رفض الطلب.');
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const updatePayload: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (adminNotes !== undefined) updatePayload.admin_notes = adminNotes;
+    if (rejectionReason !== undefined) updatePayload.rejection_reason = rejectionReason;
+    if (reviewerId) {
+      updatePayload.reviewed_by = reviewerId;
+      updatePayload.reviewed_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabase
+      .from('buyer_requests')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`فشل تحديث حالة طلب المشتري: ${error.message}`);
+    return data as BuyerRequest;
+  }
+
+  async convertBuyerRequestToDeal(
+    requestId: string,
+    targetCaseId: string,
+    reviewerId?: string
+  ): Promise<{ request: BuyerRequest; dealId: string }> {
+    const req = await this.getBuyerRequestById(requestId);
+    if (!req) throw new Error(`طلب المشتري غير موجود (${requestId})`);
+
+    if (req.converted_deal_id) {
+      throw new Error(`الطلب تم تحويله بالفعل إلى صفقة (${req.converted_deal_id})`);
+    }
+
+    const targetCase = await this.getCaseById(targetCaseId);
+    if (!targetCase) throw new Error(`ملف الوحدة غير موجود (${targetCaseId})`);
+
+    const buyerId = req.buyer_id || (reviewerId || '00000000-0000-0000-0000-000000000000');
+
+    // Create Lead
+    const lead = await this.createLead({
+      case_id: targetCaseId,
+      buyer_id: buyerId,
+      buyer_message: req.notes || `طلب شراء متطابق (${req.reference_code})`,
+      budget_cash: req.budget_cash,
+      comfortable_installment: req.max_installment,
+    });
+
+    // Create Deal
+    const deal = await this.createDeal({
+      case_id: targetCaseId,
+      lead_id: lead.id,
+      seller_id: targetCase.seller_id,
+      buyer_id: buyerId,
+      status: 'buyer_qualified',
+      agreed_cash_amount: req.budget_cash,
+      notes: `تم إنشاء الصفقة عبر طلب الشراء (${req.reference_code}) ومطابقته للوحدة (${targetCase.case_number})`,
+    });
+
+    const supabase = await createServerSupabaseClient();
+    const { data: updatedReq, error } = await supabase
+      .from('buyer_requests')
+      .update({
+        converted_deal_id: deal.id,
+        status: 'converted_to_deal',
+        reviewed_by: reviewerId || req.reviewed_by || null,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`فشل ربط الصفقة بطلب المشتري: ${error.message}`);
+    return { request: updatedReq as BuyerRequest, dealId: deal.id };
+  }
+
+  async matchListingsForBuyerRequest(requestId: string): Promise<BuyerMatchedListing[]> {
+    const req = await this.getBuyerRequestById(requestId);
+    if (!req) return [];
+    const listings = await this.getPublicListings();
+    return matchBuyerRequestWithListings(req, listings);
   }
 }

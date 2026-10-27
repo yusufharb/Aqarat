@@ -17,6 +17,11 @@ import type {
   RoleRequest,
   AuditLogEntry,
   VerificationStatus,
+  SellerRequest,
+  SellerRequestStatus,
+  BuyerRequest,
+  BuyerRequestStatus,
+  BuyerMatchedListing,
 } from '../types';
 
 export interface ListingsFilter {
@@ -113,4 +118,50 @@ export interface DataRepository {
   // Reference data
   getGovernorates(): Promise<string[]>;
   getDevelopers(): Promise<string[]>;
+
+  // Seller Requests (/sell)
+  getSellerRequests(filter?: { status?: SellerRequestStatus; search?: string }): Promise<SellerRequest[]>;
+  getSellerRequestById(id: string): Promise<SellerRequest | null>;
+  getSellerRequestByReference(referenceCode: string): Promise<SellerRequest | null>;
+  getSellerRequestsByUserId(userId: string): Promise<SellerRequest[]>;
+  createSellerRequest(
+    data: Omit<SellerRequest, 'id' | 'reference_code' | 'created_at' | 'updated_at' | 'status'> & {
+      status?: SellerRequestStatus;
+    }
+  ): Promise<SellerRequest>;
+  updateSellerRequestStatus(
+    id: string,
+    status: SellerRequestStatus,
+    adminNotes?: string,
+    rejectionReason?: string,
+    reviewerId?: string
+  ): Promise<SellerRequest>;
+  convertSellerRequestToCase(
+    requestId: string,
+    reviewerId?: string
+  ): Promise<{ request: SellerRequest; caseId: string }>;
+
+  // Buyer Requests (/buy)
+  getBuyerRequests(filter?: { status?: BuyerRequestStatus; search?: string }): Promise<BuyerRequest[]>;
+  getBuyerRequestById(id: string): Promise<BuyerRequest | null>;
+  getBuyerRequestByReference(referenceCode: string): Promise<BuyerRequest | null>;
+  getBuyerRequestsByUserId(userId: string): Promise<BuyerRequest[]>;
+  createBuyerRequest(
+    data: Omit<BuyerRequest, 'id' | 'reference_code' | 'created_at' | 'updated_at' | 'status'> & {
+      status?: BuyerRequestStatus;
+    }
+  ): Promise<BuyerRequest>;
+  updateBuyerRequestStatus(
+    id: string,
+    status: BuyerRequestStatus,
+    adminNotes?: string,
+    rejectionReason?: string,
+    reviewerId?: string
+  ): Promise<BuyerRequest>;
+  convertBuyerRequestToDeal(
+    requestId: string,
+    targetCaseId: string,
+    reviewerId?: string
+  ): Promise<{ request: BuyerRequest; dealId: string }>;
+  matchListingsForBuyerRequest(requestId: string): Promise<BuyerMatchedListing[]>;
 }
